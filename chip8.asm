@@ -16,8 +16,11 @@ org &70
 
 .ScreenAddr SKIP 2
 
+.MemPointer SKIP 2
 .SpriteStrip SKIP 1
-.Count SKIP 1
+.StripCount SKIP 1
+.NumLines SKIP 1
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Start
@@ -60,7 +63,6 @@ org &1100
     rts
 
 .plotXY: ;; (logical 3)
-    jsr calcScreenAddr ;; TODO: caller should do this, to avoid dup in getXY
     ldy #0
     lda #%11101110
     sta (ScreenAddr),y : iny
@@ -69,7 +71,6 @@ org &1100
     rts
 
 .unplotXY: ;; (logical 2)
-    jsr calcScreenAddr ;; TODO: caller should do this, to avoid dup in getXY
     ldy #0
     lda #%11100000
     sta (ScreenAddr),y : iny
@@ -78,7 +79,6 @@ org &1100
     rts
 
 .getXY:
-    jsr calcScreenAddr ;; TODO: caller should do this, to avoid dup in (un)plotXY
     ldy #0
     lda (ScreenAddr),y
     and #&f ;; just look at low nibble to distinuish logical 3 (on) from logical 2 (off)
@@ -87,90 +87,121 @@ org &1100
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; draw things...
 
-.drawGrid: { ;; TODO: loop in reverse for easier loop termination (test against 0)
+.drawGrid: {
     lda #0 : sta ScreenY
 .loopY
-    lda #0 : sta ScreenX
+    lda #63 : sta ScreenX
 .loopX:
+    jsr calcScreenAddr
     jsr unplotXY
-    inc ScreenX
-    lda ScreenX
-    cmp #64 : bne loopX
+    dec ScreenX
+    bpl loopX
     inc ScreenY
-    lda ScreenY
-    cmp #32 : bne loopY
+    lda ScreenY : cmp #32
+    bne loopY
     rts }
 
 .drawBorder: {
-    ;; horizontal
     lda #2 : sta ScreenX
 .loopA:
-    lda #1  : sta ScreenY : jsr plotXY
-    lda #30 : sta ScreenY : jsr plotXY
+    lda #1  : sta ScreenY : jsr calcScreenAddr : jsr plotXY
+    lda #30 : sta ScreenY : jsr calcScreenAddr : jsr plotXY
     inc ScreenX
     lda ScreenX
     cmp #62 : bne loopA
-    ;; vertical
     lda #2 : sta ScreenY
 .loopB:
-    lda #1  : sta ScreenX : jsr plotXY
-    lda #62 : sta ScreenX : jsr plotXY
+    lda #1  : sta ScreenX : jsr calcScreenAddr : jsr plotXY
+    lda #62 : sta ScreenX : jsr calcScreenAddr : jsr plotXY
     inc ScreenY
     lda ScreenY
     cmp #30 : bne loopB
     rts }
 
-.drawSpriteStrip: { ;; TODO: take advantage of fall through
-    lda #8 : sta Count
+.drawSpriteStrip: {
+    lda #8 : sta StripCount
 .loop:
+    jsr calcScreenAddr
     jsr getXY
-    beq amOff
-    jmp amOn
+    bne amOn
 .amOff:
     asl SpriteStrip
     bcc off
     jmp on
 .amOn:
     asl SpriteStrip
-    bcc on
-    jmp off
+    bcs off
 .on:
     jsr plotXY
     jmp after
 .off:
     jsr unplotXY
-    jmp after
 .after:
     inc ScreenX
     lda ScreenX
     cmp #64
     beq done
-    dec Count
+    dec StripCount
     bne loop
+.done:
+    rts }
+
+.drawSprite: {
+    lda #0 : sta smc_y+1
+.loop:
+    .smc_y : ldy #&EE
+    lda (MemPointer),y : sta SpriteStrip
+    lda ScreenX : sta smc+1
+    jsr drawSpriteStrip
+    dec NumLines
+    beq done
+    .smc : lda #&EE : sta ScreenX
+    inc ScreenY
+    inc smc_y+1
+    jmp loop
+.done:
+    rts }
+
+.digitData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
+
+.setDigitPointer: {
+    lda #LO(digitData) : sta MemPointer
+    lda #HI(digitData) : sta MemPointer+1
+.loop:
+    dex
+    bmi done
+    clc
+    lda MemPointer   : adc #5 : sta MemPointer
+    lda MemPointer+1 : adc #0 : sta MemPointer+1
+    jmp loop
+.done:
+    rts }
+
+.DigitN skip 1
+.DigitPosX skip 1
+.drawDigits: {
+    lda #4 : sta DigitN
+    lda #3 : sta DigitPosX
+.loop:
+    lda DigitPosX : sta ScreenX
+    lda #4 : sta ScreenY
+    lda #5 : sta NumLines
+    ldx DigitN
+    jsr setDigitPointer
+    jsr drawSprite
+    lda DigitPosX : clc : adc #5 : sta DigitPosX
+    inc DigitN
+    lda DigitN
+    cmp #&10
+    beq done
+    jmp loop
 .done:
     rts }
 
 .drawStuff:
     jsr drawGrid
     jsr drawBorder
-
-    ;;lda #%10100101 : sta SpriteStrip
-
-    lda #3 : sta ScreenX
-    lda #3 : sta ScreenY
-    lda #255 : sta SpriteStrip
-    jsr drawSpriteStrip
-
-    lda #9 : sta ScreenX
-    lda #3 : sta ScreenY
-    lda #255 : sta SpriteStrip
-    jsr drawSpriteStrip
-
-    lda #60 : sta ScreenX
-    lda #5 : sta ScreenY
-    lda #255 : sta SpriteStrip
-    jsr drawSpriteStrip
-
+    jsr drawDigits
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
