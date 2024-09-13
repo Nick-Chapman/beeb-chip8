@@ -11,13 +11,6 @@ screenStart = &3000
 
 org &70
 
-.theX skip 2 ; plot from Hi byte + hi-bit of LO byte
-.theY skip 2 ; plot only from HI byte
-
-.theCX SKIP 1 ; coarse-X : 0..79
-.theCY SKIP 1 ; coarse-Y : 0..31
-.theFX SKIP 1 ; fine-X   : 0..3
-.theFY SKIP 1 ; fine-Y   : 0..7
 .theA SKIP 2  ; screen address
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34,67 +27,32 @@ org &1100
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; graphics
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Calculate screen address from X/Y
-
-.calcA: ; theX/theY --> the{A,FX,CX,FY,CY}
-    {
-    lda theX+1
-    lsr a
-    sta theCX
-    lsr a : lsr a : lsr a : lsr a
+.draw_chip8_pixel: ;; x:0..63, y:0..31 --> theA
+    txa : lsr a : lsr a : lsr a : lsr a ; x/16
     sta smc_hbOnRow+1
-
-    lda theY+1
-    lsr a : lsr a : lsr a
-    sta theCY
+    tya : lsr a ; y/2
+    sta smc_halfY+1
     asl a : asl a : clc
-    adc theCY
-    .smc_hbOnRow : adc #&ee
+    .smc_halfY : adc #&EE
+    .smc_hbOnRow : adc #&EE
     lsr a
     clc : adc #HI(screenStart)
     sta theA+1
-
-    lda theCY : and #1              ; oddRow
+    tya : lsr a : and #1            ; oddRow
     asl a : asl a : asl a : asl a   ; Xoffset
-    eor theCX                       ; Xmod
+    stx smc_x+1
+    .smc_x : eor #&EE               ; Xmod
     asl a : asl a : asl a           ; Xmod*8
     sta smc_alo+1
-
-    lda theY+1
-    and #&7 : sta theFY
-    clc : .smc_alo : adc #&ee       ; adjust A with fineY
+    tya : asl a : asl a             ; y*4
+    and #&7 : clc
+    .smc_alo : adc #&EE
     sta theA
-
-    lda theX ; (only need hi-order bit; rotate into carry)
-    asl a
-    lda theX+1
-    rol a : and #&3 : sta theFX
-    rts
-    }
-
-
-.draw_chip8_pixel: ;; x:0..63, y:0..31
-
-    lda #0
-    sta theX
-    txa : asl a
-    sta theX+1
-
-    lda #0
-    sta theY
-    tya : asl a : asl a
-    sta theY+1
-
-    jsr calcA
-
     ldy #0
     lda #%11101110
     sta (theA),y : iny
     sta (theA),y : iny
     sta (theA),y
-
     rts
 
 .count skip 1
