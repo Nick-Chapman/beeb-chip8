@@ -57,6 +57,8 @@ org &70
 .Registers skip 16
 .RegI skip 2
 
+.Count skip 1
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Start
 
@@ -217,19 +219,6 @@ endmacro
 .done:
     rts }
 
-.setDigitPointer: { ;; TODO not used yet
-    lda #LO(digitData) : sta RegI
-    lda #HI(digitData) : sta RegI+1
-.loop:
-    dex
-    bmi done
-    clc
-    lda RegI   : adc #5 : sta RegI
-    lda RegI+1 : adc #0 : sta RegI+1
-    jmp loop
-.done:
-    rts }
-
 .clearScreen: { ;; TODO: optimize this!
     lda #0 : sta ScreenY
 .loopY
@@ -332,13 +321,13 @@ endmacro
 .op5: panic " -5???"
 
 .op6:
-    ;; 6XNN (Set register VX)
+    ;; 6XNN (Set Register)
     lda OpH : and #&f : tax
     lda OpL : sta Registers,x
     jmp next
 
 .op7:
-    ;; 7XNN (Add value to register VX)
+    ;; 7XNN (Add To Register)
     lda OpH : and #&f : tax
     lda OpL : clc : adc Registers,x : sta Registers,x
     jmp next
@@ -347,7 +336,7 @@ endmacro
 .op9: panic " -9???"
 
 .opA:
-    ;; ANNN (set index register)
+    ;; ANNN (Set Index Register)
     lda OpH : and #&f : ora #&20 : sta RegI+1
     lda OpL : sta RegI
     jmp next
@@ -363,7 +352,7 @@ endmacro
     jmp next
 
 .opD:
-    ;; DXYN (draw)
+    ;; DXYN (Draw)
     lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
     lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
@@ -371,7 +360,60 @@ endmacro
     jmp next
 
 .opE: panic " -E???"
-.opF: panic " -F???"
+
+.fontCharacter: {
+    ;; FX29 (Font Character)
+    lda OpH : and #&f : tax : ldy Registers,x
+    lda #LO(fontData) : sta RegI
+    lda #HI(fontData) : sta RegI+1
+    ;; TODO: this loop to multiply by 5 is a silly way to do things
+    ;; better to use a dispatch table, or maybe just space out the chars by 8 not 5
+.loop:
+    dey
+    bmi done
+    clc
+    lda RegI   : adc #5 : sta RegI
+    lda RegI+1 : adc #0 : sta RegI+1
+    jmp loop
+.done:
+    jmp next
+    }
+
+.storeBCD:
+    ;; FX33 (Binary Coded Decimal Conversion)
+    lda OpH : and #&f : tax : lda Registers,x
+    ;; TODO: split acc to three decimal digits. for now hack it as 567 -- see 67 on screen in brix
+    ldy #0
+    lda #5
+    sta (RegI),y
+    ldy #1
+    lda #6
+    sta (RegI),y
+    ldy #2
+    lda #7
+    sta (RegI),y
+    jmp next
+
+.restoreRegs: {
+    ;; FX65 (Restore Registers)
+    lda OpH : and #&f : sta Count
+    ldy #0
+.loop:
+    lda (RegI),y ;; TODO: orig chip8 behav was to increment RegI
+    sta Registers,y
+    cpy Count
+    beq done
+    iny
+    jmp loop
+.done:
+    jmp next }
+
+.opF:
+    lda OpL
+    { cmp #&29 : bne no : jmp fontCharacter : .no }
+    { cmp #&33 : bne no : jmp storeBCD : .no }
+    { cmp #&65 : bne no : jmp restoreRegs : .no }
+    panic " -F???"
 
 .dispatchTable : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
 
@@ -409,7 +451,7 @@ endmacro
 
 .main:
     jsr init
-    ;;jsr clearScreen
+    jsr clearScreen
     jmp execute
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -419,9 +461,9 @@ print "bytes taken by interpreter: ", *-interpreterStart
 org chip8memStart
 ;;original interpreter lived here in 512 bytes -- now fonts live here.
 
-.digitData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
-sizeDigitData = *-digitData
-assert (sizeDigitData = 80)
+.fontData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
+sizeFontData = *-fontData
+assert (sizeFontData = 80)
 
 .randomBytes:
 equb &22,&52,&6a,&51,&a7,&35,&26,&bc,&ce,&54,&e8,&56,&60,&af,&45,&04
@@ -443,7 +485,7 @@ equb &70,&3b,&a5,&0d,&f2,&13,&e8,&72,&9b,&e0,&ad,&7e,&aa,&8e,&d0,&f5
 sizeRandomBytes = *-randomBytes
 assert sizeRandomBytes = 256
 
-for i, 1, 512-sizeDigitData-sizeRandomBytes : equb 0 : next
+for i, 1, 512-sizeFontData-sizeRandomBytes : equb 0 : next
 .romStart:
 incbin ROM
 assert (romStart = &2200)
