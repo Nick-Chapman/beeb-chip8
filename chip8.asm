@@ -125,7 +125,7 @@ macro panic s
 endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Screen Address calculation. TODO: picture doc here!
+;;; Screen Address calculation.
 
 .calcScreenAddr: ;; ScreenX: 0..63, ScreenY: 0..31 --> ScreenAddr
     lda ScreenX : and #63
@@ -298,7 +298,7 @@ endmacro
     ;; 00EE (return)
     { cmp #&ee : bne no : panic " -op-return" : .no }
     ;; 00E0 (clear screen)
-    { cmp #&e0 : bne no : jmp clearScreen : .no }
+    { cmp #&e0 : bne no : jsr clearScreen : jmp next : .no }
     panic " -00??"
 .unknown:
     panic " -0???"
@@ -307,18 +307,26 @@ endmacro
     ;; 1NNN (Jump)
     lda OpH : and #&f : ora #&20 : sta ProgramCounter+1
     lda OpL : sta ProgramCounter
-    rts
+    jmp next
 
-.op2: panic " -2???"
+.op2:
+    ;; 2NNN (Call)
+    lda ProgramCounter+1 : pha
+    lda ProgramCounter : pha
+    lda OpH : and #&f : ora #&20 : sta ProgramCounter+1
+    lda OpL : sta ProgramCounter
+    jmp next
 
 .op3: {
     ;; 3XNN (Skip Equal Literal)
     lda OpH : and #&f : tax : lda Registers,x
     cmp OpL
     beq jump
-    rts
+    jmp next
 .jump:
-    jmp bumpPC }
+    jsr bumpPC
+    jmp next
+    }
 
 .op4: panic " -4???"
 .op5: panic " -5???"
@@ -327,13 +335,13 @@ endmacro
     ;; 6XNN (Set register VX)
     lda OpH : and #&f : tax
     lda OpL : sta Registers,x
-    rts
+    jmp next
 
 .op7:
     ;; 7XNN (Add value to register VX)
     lda OpH : and #&f : tax
     lda OpL : clc : adc Registers,x : sta Registers,x
-    rts
+    jmp next
 
 .op8: panic " -8???"
 .op9: panic " -9???"
@@ -342,7 +350,7 @@ endmacro
     ;; ANNN (set index register)
     lda OpH : and #&f : ora #&20 : sta RegI+1
     lda OpL : sta RegI
-    rts
+    jmp next
 
 .opB: panic " -B???"
 
@@ -352,25 +360,20 @@ endmacro
     jsr getRandomByte
     and OpL
     sta Registers,x
-    rts
+    jmp next
 
 .opD:
     ;; DXYN (draw)
     lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
     lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
-    jmp drawSprite ;; TODO: collision detection -> VF
+    jsr drawSprite ;; TODO: collision detection -> VF
+    jmp next
 
 .opE: panic " -E???"
 .opF: panic " -F???"
 
 .dispatchTable : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
-
-.dispatch: {
-    lda OpH : and #&f0 : shiftRight4 : asl a : tay
-    lda dispatchTable,y : sta smc+1 : iny
-    lda dispatchTable,y : sta smc+2
-    .smc : jmp &EEEE }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; execute
@@ -383,16 +386,23 @@ endmacro
 .done:
     rts }
 
-.execute: {
+.execute:
     lda #LO(romStart) : sta ProgramCounter
     lda #HI(romStart) : sta ProgramCounter+1
-.loop:
-    ;; fetch; decode
-    ldy #0 : lda (ProgramCounter),y : sta OpH
+
+ ;;; ops jump back here after execution
+.next:
+    ;; fetch
     ldy #1 : lda (ProgramCounter),y : sta OpL
+    ldy #0 : lda (ProgramCounter),y : sta OpH
+    ;; dispatch
+    and #&f0 : shiftRight4 : asl a : tay
     jsr bumpPC
-    jsr dispatch
-    jmp loop }
+    {
+    lda dispatchTable,y : sta smc+1 : iny
+    lda dispatchTable,y : sta smc+2
+    .smc : jmp &EEEE
+    }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; main
