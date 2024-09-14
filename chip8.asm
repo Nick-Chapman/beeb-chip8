@@ -104,6 +104,27 @@ org interpreterStart
     }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; debug
+
+.debugDecode:
+    position 1,1
+    puts "pc' "
+    lda ProgramCounter+1 : and #&0f : jsr printHexA
+    lda ProgramCounter   : jsr printHexA
+
+    position 10,1
+    puts "op "
+    lda OpH : jsr printHexA
+    lda OpL : jsr printHexA
+    rts
+
+macro panic s
+    jsr debugDecode
+    puts s
+    jmp spin
+endmacro
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Screen Address calculation. TODO: picture doc here!
 
 .calcScreenAddr: ;; ScreenX: 0..63, ScreenY: 0..31 --> ScreenAddr
@@ -154,27 +175,21 @@ org interpreterStart
     and #&f ;; just look at low nibble to distinuish logical 3 (on) from logical 2 (off)
     rts
 
+.xorPlotXY:
+    jsr getXY
+    bne unplotXY ;; TODO: collision detection -> VF
+    jmp plotXY
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; draw sprites
 
 .drawSpriteStrip: {
     lda #8 : sta StripCount
 .loop:
-    jsr calcScreenAddr
-    jsr getXY
-    bne amOn
-.amOff:
+    jsr calcScreenAddr ;; TODO: avoid doing this for every horizontal pixel
     asl SpriteStrip
-    bcc off
-    jmp on
-.amOn:
-    asl SpriteStrip
-    bcs off
-.on:
-    jsr plotXY
-    jmp after
-.off:
-    jsr unplotXY
+    bcc after
+    jsr xorPlotXY
 .after:
     inc ScreenX
     lda ScreenX
@@ -183,7 +198,8 @@ org interpreterStart
     dec StripCount
     bne loop
 .done:
-    rts }
+    rts
+    }
 
 .drawSprite: {
     lda #0 : sta smc_y+1
@@ -201,7 +217,7 @@ org interpreterStart
 .done:
     rts }
 
-.setDigitPointer: {
+.setDigitPointer: { ;; TODO not used yet
     lda #LO(digitData) : sta RegI
     lda #HI(digitData) : sta RegI+1
 .loop:
@@ -274,30 +290,9 @@ org interpreterStart
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; debug
-
-.debugDecode:
-    position 1,1
-    puts "pc "
-    lda ProgramCounter+1 : jsr printHexA
-    lda ProgramCounter   : jsr printHexA
-
-    position 9,1
-    puts "op "
-    lda OpH : jsr printHexA
-    lda OpL : jsr printHexA
-    rts
-
-macro panic s
-    jsr debugDecode
-    puts s
-    jmp spin
-endmacro
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; dispatch
 
-.op0: {
+.op0:
     lda OpH : cmp #0 : bne unknown
     lda OpL
     ;; 00EE (return)
@@ -307,14 +302,12 @@ endmacro
     panic " -00??"
 .unknown:
     panic " -0???"
-    }
 
-.op1: {
+.op1:
     ;; 1NNN (Jump)
     lda OpH : and #&f : ora #&20 : sta ProgramCounter+1
     lda OpL : sta ProgramCounter
     rts
-    }
 
 .op2: panic " -2???"
 
@@ -325,54 +318,48 @@ endmacro
     beq jump
     rts
 .jump:
-    jmp bumpPC
-    }
+    jmp bumpPC }
 
 .op4: panic " -4???"
 .op5: panic " -5???"
 
-.op6: {
+.op6:
     ;; 6XNN (Set register VX)
     lda OpH : and #&f : tax
     lda OpL : sta Registers,x
     rts
-    }
 
-.op7: {
+.op7:
     ;; 7XNN (Add value to register VX)
     lda OpH : and #&f : tax
     lda OpL : clc : adc Registers,x : sta Registers,x
     rts
-    }
 
 .op8: panic " -8???"
 .op9: panic " -9???"
 
-.opA: {
+.opA:
     ;; ANNN (set index register)
     lda OpH : and #&f : ora #&20 : sta RegI+1
     lda OpL : sta RegI
     rts
-    }
 
 .opB: panic " -B???"
 
-.opC: {
+.opC:
     ;; CXNN (Random)
     lda OpH : and #&f : tax
     jsr getRandomByte
     and OpL
     sta Registers,x
     rts
-    }
 
-.opD: {
+.opD:
     ;; DXYN (draw)
     lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
     lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
-    jmp drawSprite
-    }
+    jmp drawSprite ;; TODO: collision detection -> VF
 
 .opE: panic " -E???"
 .opF: panic " -F???"
