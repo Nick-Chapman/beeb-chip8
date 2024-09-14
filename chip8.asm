@@ -219,20 +219,6 @@ endmacro
 .done:
     rts }
 
-.clearScreen: { ;; TODO: optimize this!
-    lda #0 : sta ScreenY
-.loopY
-    lda #63 : sta ScreenX
-.loopX:
-    jsr calcScreenAddr
-    jsr unplotXY
-    dec ScreenX
-    bpl loopX
-    inc ScreenY
-    lda ScreenY : cmp #32
-    bne loopY
-    rts }
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; init
 
@@ -281,12 +267,31 @@ endmacro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; dispatch
 
+.clearScreen: {
+    ;; 00E0 (clear screen) ;; TODO: optimize this!
+    lda #0 : sta ScreenY
+.loopY
+    lda #63 : sta ScreenX
+.loopX:
+    jsr calcScreenAddr
+    jsr unplotXY
+    dec ScreenX
+    bpl loopX
+    inc ScreenY
+    lda ScreenY : cmp #32
+    bne loopY
+    rts }
+
+.return:
+    ;; 00EE (Return)
+    pla : sta ProgramCounter
+    pla : sta ProgramCounter+1
+    jmp next
+
 .op0:
     lda OpH : cmp #0 : bne unknown
     lda OpL
-    ;; 00EE (return)
-    { cmp #&ee : bne no : panic " -op-return" : .no }
-    ;; 00E0 (clear screen)
+    { cmp #&ee : bne no : jmp return : .no }
     { cmp #&e0 : bne no : jsr clearScreen : jmp next : .no }
     panic " -00??"
 .unknown:
