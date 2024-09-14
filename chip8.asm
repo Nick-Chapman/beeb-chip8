@@ -311,7 +311,17 @@ endmacro
 
 .op1: panic " -1???"
 .op2: panic " -2???"
-.op3: panic " -3???"
+
+.op3: {
+    ;; 3XNN (Skip Equal Literal)
+    lda OpH : and #&f : tax : lda Registers,x
+    cmp OpL
+    beq jump
+    rts
+.jump:
+    jmp bumpPC
+    }
+
 .op4: panic " -4???"
 .op5: panic " -5???"
 
@@ -396,6 +406,7 @@ endmacro
 
 .main:
     jsr init
+    ;;jsr clearScreen
     jmp execute
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
