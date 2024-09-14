@@ -309,7 +309,13 @@ endmacro
     panic " -0???"
     }
 
-.op1: panic " -1???"
+.op1: {
+    ;; 1NNN (Jump)
+    lda OpH : and #&f : ora #&20 : sta ProgramCounter+1
+    lda OpL : sta ProgramCounter
+    rts
+    }
+
 .op2: panic " -2???"
 
 .op3: {
@@ -353,9 +359,9 @@ endmacro
 
 .opC: {
     ;; CXNN (Random)
+    lda OpH : and #&f : tax
     jsr getRandomByte
     and OpL
-    lda OpH : and #&f : tax
     sta Registers,x
     rts
     }
