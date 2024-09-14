@@ -1,37 +1,95 @@
 
+chip8memStart = &2000 ;; 4k
+screenStart = &3000 ;; mode-1
+
+guard screenStart
+
 ;;; MOS entry points
 osasci = &ffe3
 oswrch = &ffee
 
-;;; Mode-1
-screenStart = &3000
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; macros
+
+macro copy16iv A,B
+    lda #LO(A) : sta B
+    lda #HI(A) : sta B+1
+endmacro
+
+macro shiftRight4
+    lsr a : lsr a : lsr a : lsr a
+endmacro
+
+macro position X,Y
+    lda #31 : jsr osasci
+    lda #X : jsr osasci
+    lda #Y : jsr osasci
+endmacro
+
+macro puts S
+    copy16iv msg, MsgPtr
+    jmp after
+.msg: equs S, 0
+.after:
+    jsr printString
+endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; zero page
 
 org &70
 
-.ScreenX SKIP 1 ; 0..63
-.ScreenY SKIP 1 ; 0..31
+.MsgPtr skip 2
 
-.ScreenAddr SKIP 2
+.ScreenX skip 1 ; 0..63
+.ScreenY skip 1 ; 0..31
+.ScreenAddr skip 2
 
-.MemPointer SKIP 2
-.SpriteStrip SKIP 1
-.StripCount SKIP 1
-.NumLines SKIP 1
+.SpriteStrip skip 1
+.StripCount skip 1
+.NumLines skip 1
 
+.ProgramCounter skip 2
+.OpH skip 1
+.OpL skip 1
+
+.Registers skip 16
+.RegI skip 2
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Start
 
-guard screenStart
 org &1100
 
 .start:
     jmp main
 
 .spin: jmp spin
+
+.printString: {
+    ldy #0
+.loop
+    lda (MsgPtr),y
+    beq done
+    jsr osasci
+    iny
+    bne loop
+.done:
+    rts
+    }
+
+.printHexA: {
+    pha
+    and #&f0 : shiftRight4 : tay
+    lda digits,y
+    jsr osasci
+    pla
+    and #&f : tay
+    lda digits,y
+    jsr osasci
+    rts
+.digits: equs "0123456789abcdef"
+    }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Screen Address calculation. TODO: picture doc here!
@@ -40,7 +98,7 @@ org &1100
     lda ScreenX : and #63
     clc : adc #8 ; X shifted by 8 to centralize horizontally
     sta smc_x+1
-    lsr a : lsr a : lsr a : lsr a : sta smc_hbOnRow+1 ; x/16
+    shiftRight4 : sta smc_hbOnRow+1 ; x/16
     lda ScreenY : and #31
     clc : adc #16 ; Y shifted by 16 to centralize vertically
     tay
@@ -85,38 +143,7 @@ org &1100
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; draw things...
-
-.drawGrid: {
-    lda #0 : sta ScreenY
-.loopY
-    lda #63 : sta ScreenX
-.loopX:
-    jsr calcScreenAddr
-    jsr unplotXY
-    dec ScreenX
-    bpl loopX
-    inc ScreenY
-    lda ScreenY : cmp #32
-    bne loopY
-    rts }
-
-.drawBorder: {
-    lda #2 : sta ScreenX
-.loopA:
-    lda #1  : sta ScreenY : jsr calcScreenAddr : jsr plotXY
-    lda #30 : sta ScreenY : jsr calcScreenAddr : jsr plotXY
-    inc ScreenX
-    lda ScreenX
-    cmp #62 : bne loopA
-    lda #2 : sta ScreenY
-.loopB:
-    lda #1  : sta ScreenX : jsr calcScreenAddr : jsr plotXY
-    lda #62 : sta ScreenX : jsr calcScreenAddr : jsr plotXY
-    inc ScreenY
-    lda ScreenY
-    cmp #30 : bne loopB
-    rts }
+;;; draw sprites
 
 .drawSpriteStrip: {
     lda #8 : sta StripCount
@@ -150,7 +177,7 @@ org &1100
     lda #0 : sta smc_y+1
 .loop:
     .smc_y : ldy #&EE
-    lda (MemPointer),y : sta SpriteStrip
+    lda (RegI),y : sta SpriteStrip
     lda ScreenX : sta smc+1
     jsr drawSpriteStrip
     dec NumLines
@@ -162,47 +189,32 @@ org &1100
 .done:
     rts }
 
-.digitData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
-
 .setDigitPointer: {
-    lda #LO(digitData) : sta MemPointer
-    lda #HI(digitData) : sta MemPointer+1
+    lda #LO(digitData) : sta RegI
+    lda #HI(digitData) : sta RegI+1
 .loop:
     dex
     bmi done
     clc
-    lda MemPointer   : adc #5 : sta MemPointer
-    lda MemPointer+1 : adc #0 : sta MemPointer+1
+    lda RegI   : adc #5 : sta RegI
+    lda RegI+1 : adc #0 : sta RegI+1
     jmp loop
 .done:
     rts }
 
-.DigitN skip 1
-.DigitPosX skip 1
-.drawDigits: {
-    lda #4 : sta DigitN
-    lda #3 : sta DigitPosX
-.loop:
-    lda DigitPosX : sta ScreenX
-    lda #4 : sta ScreenY
-    lda #5 : sta NumLines
-    ldx DigitN
-    jsr setDigitPointer
-    jsr drawSprite
-    lda DigitPosX : clc : adc #5 : sta DigitPosX
-    inc DigitN
-    lda DigitN
-    cmp #&10
-    beq done
-    jmp loop
-.done:
+.clearScreen: { ;; TODO: optimize this!
+    lda #0 : sta ScreenY
+.loopY
+    lda #63 : sta ScreenX
+.loopX:
+    jsr calcScreenAddr
+    jsr unplotXY
+    dec ScreenX
+    bpl loopX
+    inc ScreenY
+    lda ScreenY : cmp #32
+    bne loopY
     rts }
-
-.drawStuff:
-    jsr drawGrid
-    jsr drawBorder
-    jsr drawDigits
-    rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; init
@@ -250,14 +262,134 @@ org &1100
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; debug
+
+.debugDecode:
+    position 1,1
+    puts "pc "
+    lda ProgramCounter+1 : jsr printHexA
+    lda ProgramCounter   : jsr printHexA
+
+    position 9,1
+    puts "op "
+    lda OpH : jsr printHexA
+    lda OpL : jsr printHexA
+    rts
+
+macro panic s
+    jsr debugDecode
+    puts s
+    jmp spin
+endmacro
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; dispatch
+
+.op0: {
+    lda OpH : cmp #0 : bne unknown
+    lda OpL
+    ;; 00EE (return)
+    { cmp #&ee : bne no : panic " -op-return" : .no }
+    ;; 00E0 (clear screen)
+    { cmp #&e0 : bne no : jmp clearScreen : .no }
+    panic " -00??"
+.unknown:
+    panic " -0???"
+    }
+
+.op1: panic " -1???"
+.op2: panic " -2???"
+.op3: panic " -3???"
+.op4: panic " -4???"
+.op5: panic " -5???"
+
+.op6: {
+    ;; 6XNN (Set register VX)
+    lda OpH : and #&f : tax
+    lda OpL : sta Registers,x
+    rts
+    }
+
+.op7: {
+    ;; 7XNN (Add value to register VX)
+    lda OpH : and #&f : tax
+    lda OpL : clc : adc Registers,x : sta Registers,x
+    rts
+    }
+
+.op8: panic " -8???"
+.op9: panic " -9???"
+
+.opA: {
+    ;; ANNN (set index register)
+    lda OpH : and #&f : ora #&20 : sta RegI+1
+    lda OpL : sta RegI
+    rts
+    }
+
+.opB: panic " -B???"
+.opC: panic " -C???"
+
+.opD: {
+    ;; DXYN (draw)
+    lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
+    lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
+    lda OpL : and #&f : sta NumLines
+    jmp drawSprite
+    }
+
+.opE: panic " -E???"
+.opF: panic " -F???"
+
+.dispatchTable : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
+
+.dispatch: {
+    lda OpH : and #&f0 : shiftRight4 : asl a : tay
+    lda dispatchTable,y : sta smc+1 : iny
+    lda dispatchTable,y : sta smc+2
+    .smc : jmp &EEEE }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; execute
+
+.bumpPC: {
+    inc ProgramCounter
+    inc ProgramCounter
+    bne done
+    inc ProgramCounter+1
+.done:
+    rts }
+
+.execute: {
+    lda #LO(romStart) : sta ProgramCounter
+    lda #HI(romStart) : sta ProgramCounter+1
+.loop:
+    ;; fetch; decode
+    ldy #0 : lda (ProgramCounter),y : sta OpH
+    ldy #1 : lda (ProgramCounter),y : sta OpL
+    jsr bumpPC
+    jsr dispatch
+    jmp loop }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; main
 
 .main:
     jsr init
-    jsr drawStuff
-    jmp spin
+    jmp execute
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+print "bytes remaining for interpreter: ", chip8memStart-*
+org chip8memStart
+;;original interpreter lived here in 512 bytes -- now fonts live here.
+.digitData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
+sizeDigitData = *-digitData
+assert (sizeDigitData = 80)
+for i, 1, 512-sizeDigitData : equb 0 : next
+.romStart:
+incbin "roms/ibm.ch8"
+assert (romStart = &2200)
 .end:
-print "bytes remaining: ", screenStart-*
+
 save "Code", start, end
