@@ -1,4 +1,5 @@
 
+interpreterStart = &1100
 chip8memStart = &2000 ;; 4k
 screenStart = &3000 ;; mode-1
 
@@ -59,7 +60,7 @@ org &70
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Start
 
-org &1100
+org interpreterStart
 
 .start:
     jmp main
@@ -380,7 +381,8 @@ endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-print "bytes remaining for interpreter: ", chip8memStart-*
+print "bytes taken by interpreter: ", *-interpreterStart
+;print "bytes remaining for interpreter: ", chip8memStart-*
 org chip8memStart
 ;;original interpreter lived here in 512 bytes -- now fonts live here.
 .digitData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
@@ -388,7 +390,7 @@ sizeDigitData = *-digitData
 assert (sizeDigitData = 80)
 for i, 1, 512-sizeDigitData : equb 0 : next
 .romStart:
-incbin "roms/ibm.ch8"
+incbin ROM
 assert (romStart = &2200)
 .end:
 
