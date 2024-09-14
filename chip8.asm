@@ -89,7 +89,18 @@ org interpreterStart
     lda digits,y
     jsr osasci
     rts
-.digits: equs "0123456789abcdef"
+.digits: equs "0123456789ABCDEF"
+    }
+
+.randomOffset skip 1
+
+.getRandomByte: { ; -->A
+    inc randomOffset
+    ;;sty restoreY+1
+    ldy randomOffset
+    lda randomBytes,y
+    ;;.restoreY : ldy #&77
+    rts
     }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -329,7 +340,15 @@ endmacro
     }
 
 .opB: panic " -B???"
-.opC: panic " -C???"
+
+.opC: {
+    ;; CXNN (Random)
+    jsr getRandomByte
+    and OpL
+    lda OpH : and #&f : tax
+    sta Registers,x
+    rts
+    }
 
 .opD: {
     ;; DXYN (draw)
@@ -385,10 +404,32 @@ print "bytes taken by interpreter: ", *-interpreterStart
 ;print "bytes remaining for interpreter: ", chip8memStart-*
 org chip8memStart
 ;;original interpreter lived here in 512 bytes -- now fonts live here.
+
 .digitData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
 sizeDigitData = *-digitData
 assert (sizeDigitData = 80)
-for i, 1, 512-sizeDigitData : equb 0 : next
+
+.randomBytes:
+equb &22,&52,&6a,&51,&a7,&35,&26,&bc,&ce,&54,&e8,&56,&60,&af,&45,&04
+equb &ce,&65,&54,&70,&df,&d4,&36,&b1,&7c,&0f,&0d,&dd,&1f,&66,&bd,&98
+equb &7e,&a0,&8e,&36,&27,&5a,&9b,&31,&7e,&70,&48,&65,&6f,&39,&45,&60
+equb &db,&4f,&fb,&ba,&e4,&7a,&a7,&a7,&96,&f0,&b0,&e6,&a8,&e9,&99,&bb
+equb &10,&6f,&28,&02,&dc,&79,&bc,&b3,&18,&18,&81,&cc,&bb,&b3,&e0,&ff
+equb &8b,&4f,&11,&e0,&f2,&1b,&ff,&7a,&ee,&37,&c5,&ca,&9d,&57,&ba,&c4
+equb &cd,&65,&b5,&43,&f7,&5c,&82,&10,&d2,&8c,&5e,&b0,&c5,&aa,&c6,&1a
+equb &bd,&a4,&3a,&f7,&37,&0f,&5c,&5f,&63,&61,&93,&0a,&05,&54,&21,&7a
+equb &b2,&c3,&fe,&3f,&74,&a6,&5c,&3e,&ca,&1b,&5c,&26,&57,&ef,&01,&32
+equb &f9,&ff,&82,&b4,&ee,&df,&7c,&d6,&2f,&f2,&e5,&20,&84,&3b,&a6,&d0
+equb &ac,&2a,&88,&c3,&9b,&01,&81,&9f,&a5,&3a,&c4,&fa,&fc,&6d,&d4,&46
+equb &e2,&f6,&7d,&39,&63,&0a,&97,&6d,&b9,&9a,&97,&71,&f8,&ea,&ff,&7f
+equb &85,&bc,&88,&06,&3b,&30,&c5,&3f,&33,&3a,&67,&d7,&a7,&f7,&f7,&83
+equb &8f,&f6,&ae,&f1,&1f,&07,&3b,&a6,&0b,&3b,&b3,&9b,&f9,&f4,&67,&fe
+equb &1a,&c0,&ce,&41,&cc,&26,&13,&b8,&64,&c0,&77,&42,&00,&9f,&63,&e2
+equb &70,&3b,&a5,&0d,&f2,&13,&e8,&72,&9b,&e0,&ad,&7e,&aa,&8e,&d0,&f5
+sizeRandomBytes = *-randomBytes
+assert sizeRandomBytes = 256
+
+for i, 1, 512-sizeDigitData-sizeRandomBytes : equb 0 : next
 .romStart:
 incbin ROM
 assert (romStart = &2200)
