@@ -352,7 +352,34 @@ endmacro
     lda OpL : clc : adc Registers,x : sta Registers,x
     jmp next
 
-.op8: panic " -8???"
+.op80:
+    ;; 8XY0 (Set)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,y
+    sta Registers,x
+    jmp next
+
+.op81: panic " -8??1"
+.op82: panic " -8??2"
+.op83: panic " -8??3"
+.op84: panic " -8??4"
+.op85: panic " -8??5"
+.op86: panic " -8??6"
+.op87: panic " -8??7"
+.op8E: panic " -8??E"
+.op8x: panic " -8???"
+
+.dispatchTable8 : equw op80,op81,op82,op83,op84,op85,op86,op87,op8x,op8x,op8x,op8x,op8x,op8x,op8E,op8x
+
+.op8:
+    ;; dispatch2
+    lda OpL : and &0F : asl a : tay
+    {
+    lda dispatchTable8,y : sta smc+1 : iny
+    lda dispatchTable8,y : sta smc+2
+    .smc : jmp &EEEE
+    }
 
 .op9: {
     ;; 9XY0 (Skip Not Equal Regs)
@@ -391,6 +418,16 @@ endmacro
 
 .opE: panic " -E???"
 
+.addToIndex: {
+    ;; FX1E (Add To Index)
+    lda OpH : and #&f : tax : lda Registers,x
+    clc : adc RegI : sta RegI
+    bcc done
+    inc RegI+1
+.done:
+    jmp next
+    }
+
 .fontCharacter: {
     ;; FX29 (Font Character)
     lda OpH : and #&f : tax : ldy Registers,x
@@ -424,6 +461,20 @@ endmacro
     sta (RegI),y
     jmp next
 
+.saveRegs: {
+    ;; FX55 (Save Registers)
+    lda OpH : and #&f : sta Count
+    ldy #0
+.loop:
+    lda Registers,y
+    sta (RegI),y ;; TODO: orig chip8 behav was to increment RegI
+    cpy Count
+    beq done
+    iny
+    jmp loop
+.done:
+    jmp next }
+
 .restoreRegs: {
     ;; FX65 (Restore Registers)
     lda OpH : and #&f : sta Count
@@ -440,8 +491,10 @@ endmacro
 
 .opF:
     lda OpL
+    { cmp #&1E : bne no : jmp addToIndex : .no }
     { cmp #&29 : bne no : jmp fontCharacter : .no }
     { cmp #&33 : bne no : jmp storeBCD : .no }
+    { cmp #&55 : bne no : jmp saveRegs : .no }
     { cmp #&65 : bne no : jmp restoreRegs : .no }
     panic " -F???"
 
@@ -464,6 +517,7 @@ endmacro
 
  ;;; ops jump back here after execution
 .next:
+    ;; jsr debugDecode
     ;; fetch
     ldy #1 : lda (ProgramCounter),y : sta OpL
     ldy #0 : lda (ProgramCounter),y : sta OpH
