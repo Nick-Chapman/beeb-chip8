@@ -315,15 +315,30 @@ endmacro
     ;; 3XNN (Skip Equal Literal)
     lda OpH : and #&f : tax : lda Registers,x
     cmp OpL
-    beq jump
-    jmp next
-.jump:
+    bne noSkip
     jsr bumpPC
-    jmp next
-    }
+.noSkip:
+    jmp next }
 
-.op4: panic " -4???"
-.op5: panic " -5???"
+.op4: {
+    ;; 4XNN (Skip Not Equal Literal)
+    lda OpH : and #&f : tax : lda Registers,x
+    cmp OpL
+    beq noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
+
+.op5: {
+    ;; 5XY0 (Skip Equal Regs)
+    lda OpH : and #&f : tax :
+    lda OpL : shiftRight4 : tay :
+    lda Registers,x
+    cmp Registers,y
+    bne noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
 
 .op6:
     ;; 6XNN (Set Register)
@@ -338,7 +353,17 @@ endmacro
     jmp next
 
 .op8: panic " -8???"
-.op9: panic " -9???"
+
+.op9: {
+    ;; 9XY0 (Skip Not Equal Regs)
+    lda OpH : and #&f : tax :
+    lda OpL : shiftRight4 : tay :
+    lda Registers,x
+    cmp Registers,y
+    beq noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
 
 .opA:
     ;; ANNN (Set Index Register)

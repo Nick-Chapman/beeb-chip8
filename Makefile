@@ -1,8 +1,8 @@
 
 #default = ibm
 #default = maze
-default = brix
-#default = 3-corax+
+#default = brix
+default = 3-corax+
 
 top: build
 
