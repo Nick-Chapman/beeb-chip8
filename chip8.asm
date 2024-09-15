@@ -280,10 +280,14 @@ endmacro
     and #&f ;; just look at low nibble to distinuish logical 3 (on) from logical 2 (off)
     rts
 
-.xorPlotXY:
+.xorPlotXY: {
     jsr getXY
-    bne unplotXY ;; TODO: collision detection -> VF
+    bne collision
     jmp plotXY
+.collision:
+    lda #1 : sta Registers+&F
+    jmp unplotXY
+    }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; draw sprites
@@ -312,7 +316,7 @@ endmacro
     .smc_y : ldy #&EE
     lda (Index),y : sta SpriteStrip
     lda ScreenX : sta smc+1
-    jsr drawSpriteStrip
+    jsr drawSpriteStrip ;; TODO inline
     dec NumLines
     beq done
     .smc : lda #&EE : sta ScreenX
@@ -559,7 +563,8 @@ endmacro
     lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
     lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
-    jsr drawSprite ;; TODO: collision detection -> VF
+    lda #0 : sta Registers+&F
+    jsr drawSprite ;; TODO: inline
     jmp next
 
 .opEX9E: {

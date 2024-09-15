@@ -1,8 +1,10 @@
 
 #default = ibm
 #default = maze
-default = brix
-#default = 3-corax+
+#default = brix
+default = 3-corax+
+#default = 4-flags
+#default = 5-quirks
 #default = 6-keypad
 
 top: run
