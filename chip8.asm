@@ -5,6 +5,14 @@ screenStart = &3000 ;; mode-1
 
 guard screenStart
 
+;;; MOS vectors & zero page use
+interruptSaveA = &fc
+irq1v = &204
+
+;;; Sheila
+system_VIA_interruptFlags   = &fe4d
+system_VIA_interruptEnable  = &fe4e
+
 ;;; MOS entry points
 osasci = &ffe3
 oswrch = &ffee
@@ -35,10 +43,26 @@ macro puts S
     jsr printString
 endmacro
 
+macro emit C
+    ;;pha
+    lda #C
+    jsr osasci
+    ;;pla
+endmacro
+
+macro space
+    emit ' '
+endmacro
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; zero page
 
 org &70
+
+.ProgramCounter skip 2
+.Index skip 2
+.DelayTimer skip 1
+.Registers skip 16
 
 .MsgPtr skip 2
 
@@ -50,12 +74,8 @@ org &70
 .StripCount skip 1
 .NumLines skip 1
 
-.ProgramCounter skip 2
 .OpH skip 1
 .OpL skip 1
-
-.Registers skip 16
-.RegI skip 2
 
 .Count skip 1
 
@@ -66,6 +86,10 @@ org interpreterStart
 
 .start:
     jmp main
+
+.main:
+    jsr initialize
+    jmp execute
 
 .spin: jmp spin
 
@@ -108,20 +132,46 @@ org interpreterStart
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; debug
 
-.debugDecode:
-    position 1,1
-    puts "pc' "
+.debugPC:
     lda ProgramCounter+1 : and #&0f : jsr printHexA
     lda ProgramCounter   : jsr printHexA
+    rts
 
+.debugIndex:
+    lda Index+1 : and #&0f : jsr printHexA
+    lda Index   : jsr printHexA
+    rts
+
+.debugDecode:
+    position 1,1
+    puts "pc' " : jsr debugPC
     position 10,1
     puts "op "
     lda OpH : jsr printHexA
     lda OpL : jsr printHexA
     rts
 
-macro panic s
+.debugRegs: {
+    position 16,28
+    ldx #0
+.loop:
+    lda Registers,x : jsr printHexA : space : inx
+    cpx #8 : bne cont
+    position 16,30
+.cont:
+    cpx #16 : bne loop
+    rts }
+
+.debugState: {
+    position 1,26 : puts "PC " : jsr debugPC
+    position 1,28 : puts "I  " : jsr debugIndex
+    position 1,30 : puts "T  " : lda DelayTimer : jsr printHexA
+    jsr debugRegs
     jsr debugDecode
+    }
+
+macro panic s
+    jsr debugState
     puts s
     jmp spin
 endmacro
@@ -207,7 +257,7 @@ endmacro
     lda #0 : sta smc_y+1
 .loop:
     .smc_y : ldy #&EE
-    lda (RegI),y : sta SpriteStrip
+    lda (Index),y : sta SpriteStrip
     lda ScreenX : sta smc+1
     jsr drawSpriteStrip
     dec NumLines
@@ -220,7 +270,7 @@ endmacro
     rts }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; init
+;;; initialize
 
 .mode1:
     lda #22 : jsr oswrch
@@ -256,18 +306,55 @@ endmacro
     lda #0 : jsr oswrch : jsr oswrch : jsr oswrch
     rts
 
-.init:
+.initialize:
     jsr mode1
     jsr cursorOff
     jsr setLogicalZeroAsBlue
     jsr setLogicalTwoAsBlack
     jsr setLogicalThreeAsCyan
+    lda #%01111111 : sta system_VIA_interruptEnable ; disable all interrupts
+    lda #%10000010 : sta system_VIA_interruptEnable ; enable just VBlank
+    copy16iv myIRQ, irq1v
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; dispatch
+;;; screen interrupts
 
-.clearScreen: {
+.vsyncNotify equb 0 ; -> 1
+
+.myIRQ: {
+    lda system_VIA_interruptFlags : and #2 : bne vblank
+    panic "unexpected interrupt"
+    lda #&7f : sta system_VIA_interruptFlags ; ack
+    lda interruptSaveA
+    rti
+.vblank:
+    sta system_VIA_interruptFlags ; ack
+    inc vsyncNotify
+    lda interruptSaveA
+    rti }
+
+.frameCounter: skip 1
+
+.onSync:
+    { lda DelayTimer : beq no : dec DelayTimer : .no }
+    inc frameCounter
+    position 37,1 : lda frameCounter : jsr printHexA
+    jsr debugState
+    rts
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ops...
+
+.bumpPC: {
+    inc ProgramCounter
+    inc ProgramCounter
+    bne done
+    inc ProgramCounter+1
+.done:
+    rts }
+
+.op00E0: {
     ;; 00E0 (clear screen) ;; TODO: optimize this!
     lda #0 : sta ScreenY
 .loopY
@@ -280,21 +367,21 @@ endmacro
     inc ScreenY
     lda ScreenY : cmp #32
     bne loopY
-    rts }
+    jmp next }
 
-.return:
+.op00EE:
     ;; 00EE (Return)
     pla : sta ProgramCounter
     pla : sta ProgramCounter+1
     jmp next
 
 .op0:
-    lda OpH : cmp #0 : bne unknown
+    lda OpH : cmp #0 : bne op0u
     lda OpL
-    { cmp #&ee : bne no : jmp return : .no }
-    { cmp #&e0 : bne no : jsr clearScreen : jmp next : .no }
+    { cmp #&ee : bne no : jmp op00EE : .no }
+    { cmp #&e0 : bne no : jmp op00E0 : .no }
     panic " -00??"
-.unknown:
+.op0u:
     panic " -0???"
 
 .op1:
@@ -352,7 +439,7 @@ endmacro
     lda OpL : clc : adc Registers,x : sta Registers,x
     jmp next
 
-.op80:
+.op8XY0:
     ;; 8XY0 (Set)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
@@ -360,24 +447,26 @@ endmacro
     sta Registers,x
     jmp next
 
-.op81: panic " -8??1"
-.op82: panic " -8??2"
-.op83: panic " -8??3"
-.op84: panic " -8??4"
-.op85: panic " -8??5"
-.op86: panic " -8??6"
-.op87: panic " -8??7"
-.op8E: panic " -8??E"
-.op8x: panic " -8???"
+.op8XY1: panic " -8??1"
+.op8XY2: panic " -8??2"
+.op8XY3: panic " -8??3"
+.op8XY4: panic " -8??4"
+.op8XY5: panic " -8??5"
+.op8XY6: panic " -8??6"
+.op8XY7: panic " -8??7"
+.op8XYE: panic " -8??E"
+.op8XYu: panic " -8???"
 
-.dispatchTable8 : equw op80,op81,op82,op83,op84,op85,op86,op87,op8x,op8x,op8x,op8x,op8x,op8x,op8E,op8x
+.dispatchOp8:
+    equw op8XY0,op8XY1,op8XY2,op8XY3,op8XY4,op8XY5,op8XY6,op8XY7
+    equw op8XYu,op8XYu,op8XYu,op8XYu,op8XYu,op8XYu,op8XYE,op8XYu
 
 .op8:
     ;; dispatch2
     lda OpL : and &0F : asl a : tay
     {
-    lda dispatchTable8,y : sta smc+1 : iny
-    lda dispatchTable8,y : sta smc+2
+    lda dispatchOp8,y : sta smc+1 : iny
+    lda dispatchOp8,y : sta smc+2
     .smc : jmp &EEEE
     }
 
@@ -394,8 +483,8 @@ endmacro
 
 .opA:
     ;; ANNN (Set Index Register)
-    lda OpH : and #&f : ora #&20 : sta RegI+1
-    lda OpL : sta RegI
+    lda OpH : and #&f : ora #&20 : sta Index+1
+    lda OpL : sta Index
     jmp next
 
 .opB: panic " -B???"
@@ -418,56 +507,68 @@ endmacro
 
 .opE: panic " -E???"
 
-.addToIndex: {
+.opFX07:
+    ;; FX07 (Read Delay Timer)
+    lda OpH : and #&f : tax
+    lda DelayTimer
+    sta Registers,x
+    jmp next
+
+.opFX15: {
+    ;; FX15 (Set Delay Timer)
+    lda OpH : and #&f : tax : lda Registers,x : sta DelayTimer
+    jmp next }
+
+.opFX1E: {
     ;; FX1E (Add To Index)
     lda OpH : and #&f : tax : lda Registers,x
-    clc : adc RegI : sta RegI
+    clc : adc Index : sta Index
     bcc done
-    inc RegI+1
+    inc Index+1
 .done:
     jmp next
     }
 
-.fontCharacter: {
+.opFX29: {
     ;; FX29 (Font Character)
     lda OpH : and #&f : tax : ldy Registers,x
-    lda #LO(fontData) : sta RegI
-    lda #HI(fontData) : sta RegI+1
+    lda #LO(fontData) : sta Index
+    lda #HI(fontData) : sta Index+1
     ;; TODO: this loop to multiply by 5 is a silly way to do things
     ;; better to use a dispatch table, or maybe just space out the chars by 8 not 5
 .loop:
     dey
     bmi done
     clc
-    lda RegI   : adc #5 : sta RegI
-    lda RegI+1 : adc #0 : sta RegI+1
+    lda Index   : adc #5 : sta Index
+    lda Index+1 : adc #0 : sta Index+1
     jmp loop
 .done:
     jmp next
     }
 
-.storeBCD:
+.opFX33:
     ;; FX33 (Binary Coded Decimal Conversion)
     lda OpH : and #&f : tax : lda Registers,x
     ;; TODO: split acc to three decimal digits. for now hack it as 567 -- see 67 on screen in brix
     ldy #0
     lda #5
-    sta (RegI),y
+    sta (Index),y
     ldy #1
     lda #6
-    sta (RegI),y
+    sta (Index),y
     ldy #2
     lda #7
-    sta (RegI),y
+    sta (Index),y
     jmp next
 
-.saveRegs: {
+.opFX55: {
     ;; FX55 (Save Registers)
     lda OpH : and #&f : sta Count
     ldy #0
 .loop:
     lda Registers,y
-    sta (RegI),y ;; TODO: orig chip8 behav was to increment RegI
+    sta (Index),y ;; TODO: orig chip8 behav was to increment Index
     cpy Count
     beq done
     iny
@@ -475,12 +576,12 @@ endmacro
 .done:
     jmp next }
 
-.restoreRegs: {
+.opFX65: {
     ;; FX65 (Restore Registers)
     lda OpH : and #&f : sta Count
     ldy #0
 .loop:
-    lda (RegI),y ;; TODO: orig chip8 behav was to increment RegI
+    lda (Index),y ;; TODO: orig chip8 behav was to increment Index
     sta Registers,y
     cpy Count
     beq done
@@ -491,33 +592,23 @@ endmacro
 
 .opF:
     lda OpL
-    { cmp #&1E : bne no : jmp addToIndex : .no }
-    { cmp #&29 : bne no : jmp fontCharacter : .no }
-    { cmp #&33 : bne no : jmp storeBCD : .no }
-    { cmp #&55 : bne no : jmp saveRegs : .no }
-    { cmp #&65 : bne no : jmp restoreRegs : .no }
+    { cmp #&07 : bne no : jmp opFX07 : .no }
+    { cmp #&15 : bne no : jmp opFX15 : .no }
+    { cmp #&1E : bne no : jmp opFX1E : .no }
+    { cmp #&29 : bne no : jmp opFX29 : .no }
+    { cmp #&33 : bne no : jmp opFX33 : .no }
+    { cmp #&55 : bne no : jmp opFX55 : .no }
+    { cmp #&65 : bne no : jmp opFX65 : .no }
     panic " -F???"
 
-.dispatchTable : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
+.dispatchOp : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; execute
+;;; next/execute
 
-.bumpPC: {
-    inc ProgramCounter
-    inc ProgramCounter
-    bne done
-    inc ProgramCounter+1
-.done:
-    rts }
-
-.execute:
-    lda #LO(romStart) : sta ProgramCounter
-    lda #HI(romStart) : sta ProgramCounter+1
-
- ;;; ops jump back here after execution
+;;; ops jump back here after execution
 .next:
-    ;; jsr debugDecode
+    lda vsyncNotify : { beq no : jsr onSync : lda #0 : sta vsyncNotify : .no }
     ;; fetch
     ldy #1 : lda (ProgramCounter),y : sta OpL
     ldy #0 : lda (ProgramCounter),y : sta OpH
@@ -525,23 +616,20 @@ endmacro
     and #&f0 : shiftRight4 : asl a : tay
     jsr bumpPC
     {
-    lda dispatchTable,y : sta smc+1 : iny
-    lda dispatchTable,y : sta smc+2
+    lda dispatchOp,y : sta smc+1 : iny
+    lda dispatchOp,y : sta smc+2
     .smc : jmp &EEEE
     }
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; main
-
-.main:
-    jsr init
-    jsr clearScreen
-    jmp execute
+.execute:
+    lda #LO(romStart) : sta ProgramCounter
+    lda #HI(romStart) : sta ProgramCounter+1
+    jmp op00E0 ;; initial clear screen; continues at next
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 print "bytes taken by interpreter: ", *-interpreterStart
-;print "bytes remaining for interpreter: ", chip8memStart-*
+print "bytes remaining for interpreter: ", chip8memStart-*
 org chip8memStart
 ;;original interpreter lived here in 512 bytes -- now fonts live here.
 
