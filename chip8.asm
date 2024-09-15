@@ -407,6 +407,14 @@ endmacro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; ops...
 
+.checkCarryNext: {
+    bcs carry
+    lda #0 : sta Registers+&F
+    jmp next
+.carry:
+    lda #1 : sta Registers+&F
+    jmp next }
+
 .bumpPC: {
     inc ProgramCounter
     inc ProgramCounter
@@ -535,61 +543,46 @@ endmacro
     sta Registers,x
     jmp next
 
-.op8XY4: {
+.op8XY4:
     ;; 8XY4 (Register Add)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
     lda Registers,x
     clc : adc Registers,y
     sta Registers,x
-    bcc noCarry
-    ;;lda #1 : sta Registers+&F ;; TODO carry
-.noCarry:
-    jmp next }
+    jmp checkCarryNext
 
-.op8XY5: {
+.op8XY5:
     ;; 8XY5 (Register Subtract)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
     lda Registers,x
     sec : sbc Registers,y
     sta Registers,x
-    bcs noCarry ;;!
-    ;;lda #1 : sta Registers+&F ;; TODO carry
-.noCarry:
-    jmp next }
+    jmp checkCarryNext
 
-.op8XY7: {
+.op8XY7:
     ;; 8XY7 (Register Subtract Reverse)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
     lda Registers,y
     sec : sbc Registers,x
     sta Registers,x
-    bcs noCarry ;;!
-    ;;lda #1 : sta Registers+&F ;; TODO carry
-.noCarry:
-    jmp next }
+    jmp checkCarryNext
 
-.op8XY6: {
+.op8XY6:
     ;; 8XY6 (Register Shift Right)
     lda OpH : and #&f : tax
     ;; ignoring Y -- orig chip8 behav was to copy Y to X first
     lsr Registers,x
-    bcc noCarry
-    ;;lda #1 : sta Registers+&F ;; TODO carry
-.noCarry:
-    jmp next }
+    jmp checkCarryNext
 
-.op8XYE: {
+.op8XYE:
     ;; 8XYE (Register Shift Left)
     lda OpH : and #&f : tax
     ;; ignoring Y -- orig chip8 behav was to copy Y to X first
     asl Registers,x
-    bcc noCarry
-    ;;lda #1 : sta Registers+&F ;; TODO carry
-.noCarry:
-    jmp next }
+    jmp checkCarryNext
 
 .op8XYu: panic " -8???"
 
