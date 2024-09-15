@@ -672,6 +672,23 @@ endmacro
     sta Registers,x
     jmp next
 
+.opFX0A: {
+    ;; FX0A (Blocking Get Key)
+.again:
+    ldy #0
+.loop:
+    lda Keys,y
+    bne press
+    iny
+    cpy #16
+    bne loop
+    jsr readKeys ;; TODO: okay here? normally we do it in sync
+    jmp again
+.press:
+    lda OpH : and #&f : tax : sty Registers,x
+    jmp next
+    }
+
 .opFX15: {
     ;; FX15 (Set Delay Timer)
     lda OpH : and #&f : tax : lda Registers,x : sta DelayTimer
@@ -754,6 +771,7 @@ endmacro
 .opF:
     lda OpL
     { cmp #&07 : bne no : jmp opFX07 : .no }
+    { cmp #&0A : bne no : jmp opFX0A : .no }
     { cmp #&15 : bne no : jmp opFX15 : .no }
     { cmp #&18 : bne no : jmp opFX18 : .no }
     { cmp #&1E : bne no : jmp opFX1E : .no }
