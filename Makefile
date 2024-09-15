@@ -3,6 +3,7 @@
 #default = maze
 default = brix
 #default = 3-corax+
+#default = 6-keypad
 
 top: run
 

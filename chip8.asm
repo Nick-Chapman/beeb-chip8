@@ -3,15 +3,16 @@ interpreterStart = &1100
 chip8memStart = &2000 ;; 4k
 screenStart = &3000 ;; mode-1
 
-guard screenStart
-
 ;;; MOS vectors & zero page use
 interruptSaveA = &fc
 irq1v = &204
 
 ;;; Sheila
+system_VIA_portB            = &fe40
+system_VIA_dataDirectionA   = &fe43
 system_VIA_interruptFlags   = &fe4d
 system_VIA_interruptEnable  = &fe4e
+system_VIA_portA            = &fe4f
 
 ;;; MOS entry points
 osasci = &ffe3
@@ -33,6 +34,12 @@ macro position X,Y
     lda #31 : jsr osasci
     lda #X : jsr osasci
     lda #Y : jsr osasci
+endmacro
+
+macro positionVarY X
+    lda #31 : jsr osasci
+    lda #X : jsr osasci
+    tya : jsr osasci
 endmacro
 
 macro puts S
@@ -58,6 +65,7 @@ endmacro
 ;;; zero page
 
 org &70
+guard &100
 
 .ProgramCounter skip 2
 .Index skip 2
@@ -83,6 +91,7 @@ org &70
 ;;; Start
 
 org interpreterStart
+guard screenStart
 
 .start:
     jmp main
@@ -105,17 +114,18 @@ org interpreterStart
     rts
     }
 
+.HexDigits: equs "0123456789ABCDEF"
+
 .printHexA: {
     pha
     and #&f0 : shiftRight4 : tay
-    lda digits,y
+    lda HexDigits,y
     jsr osasci
     pla
     and #&f : tay
-    lda digits,y
+    lda HexDigits,y
     jsr osasci
     rts
-.digits: equs "0123456789ABCDEF"
     }
 
 .randomOffset skip 1
@@ -128,6 +138,48 @@ org interpreterStart
     ;;.restoreY : ldy #&77
     rts
     }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Read Keys
+
+;;; https://beebwiki.mdfs.net/Keyboard
+.BeebCode equb &42,&30,&31,&11,&10,&21,&22,&41,&51,&32,&61,&52,&12,&33,&43,&63
+;;;            X,  1,  2,  3,  Q,  W,  E,  A,  S,  D,  Z,  C,  4,  R,  F,  V
+
+;;;  press             chip8
+;;; -------           -------
+;;; 1 2 3 4      =>   1 2 3 C
+;;;  q w e r     =>   4 5 6 D
+;;;   a s d f    =>   7 8 9 E
+;;;    z x c v   =>   A 0 B F
+
+.Keys skip 16
+
+.readKeys: {
+    ldx #0
+.loop:
+    lda #0 : sta Keys,x
+    lda BeebCode,x : sta system_VIA_portA : lda system_VIA_portA
+    bpl no : lda #1 : sta Keys,x : .no
+    inx
+    cpx #16
+    bne loop
+    rts }
+
+.KeyPadLayoutOrder equb 1,2,3,&C,4,5,6,&D,7,8,9,&E,&A,0,&B,&F
+
+.debugKeys: {
+    lda #0 : sta Count
+.loop:
+    lda Count : tax
+    and #&3 : bne noRePosition : txa : lsr a : lsr a : tay : iny : positionVarY 35 : .noRePosition
+    lda KeyPadLayoutOrder,x : tax
+    lda HexDigits,x : ldy Keys,x : { bne no : lda #'.' : .no } : jsr osasci : inx
+    inc Count
+    lda Count
+    cmp #16
+    bne loop
+    rts }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; debug
@@ -143,15 +195,15 @@ org interpreterStart
     rts
 
 .debugDecode:
-    position 1,1
+    position 1,3
     puts "pc' " : jsr debugPC
-    position 10,1
+    position 10,3
     puts "op "
     lda OpH : jsr printHexA
     lda OpL : jsr printHexA
     rts
 
-.debugRegs: {
+.debugRegisters: {
     position 16,28
     ldx #0
 .loop:
@@ -166,12 +218,13 @@ org interpreterStart
     position 1,26 : puts "PC " : jsr debugPC
     position 1,28 : puts "I  " : jsr debugIndex
     position 1,30 : puts "T  " : lda DelayTimer : jsr printHexA
-    jsr debugRegs
-    jsr debugDecode
-    }
+    ;;jsr debugRegisters ; TODO: breaks key detection. why ?!? just too slow
+    jsr debugKeys
+}
 
 macro panic s
     jsr debugState
+    jsr debugDecode
     puts s
     jmp spin
 endmacro
@@ -307,13 +360,16 @@ endmacro
     rts
 
 .initialize:
+    lda #%01111111 : sta system_VIA_interruptEnable ; disable all interrupts
+    lda #%10000010 : sta system_VIA_interruptEnable ; enable just VBlank
+    ;; start in keys mode
+    lda #%00000011 : sta system_VIA_portB ; set bit 3 to 0
+    lda #%01111111 : sta system_VIA_dataDirectionA ; (top bit input)
     jsr mode1
     jsr cursorOff
     jsr setLogicalZeroAsBlue
     jsr setLogicalTwoAsBlack
     jsr setLogicalThreeAsCyan
-    lda #%01111111 : sta system_VIA_interruptEnable ; disable all interrupts
-    lda #%10000010 : sta system_VIA_interruptEnable ; enable just VBlank
     copy16iv myIRQ, irq1v
     rts
 
@@ -337,9 +393,10 @@ endmacro
 .frameCounter: skip 1
 
 .onSync:
-    { lda DelayTimer : beq no : dec DelayTimer : .no }
     inc frameCounter
-    position 37,1 : lda frameCounter : jsr printHexA
+    position 1,1 : lda frameCounter : jsr printHexA
+    { lda DelayTimer : beq no : dec DelayTimer : .no }
+    jsr readKeys
     jsr debugState
     rts
 
@@ -505,7 +562,27 @@ endmacro
     jsr drawSprite ;; TODO: collision detection -> VF
     jmp next
 
-.opE: panic " -E???"
+.opEX9E: {
+    ;; EX9E (Skip If Key pressed)
+    lda OpH : and #&f : tax : ldy Registers,x : lda Keys,y
+    beq noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
+
+.opEXA1: {
+    ;; EXA1 (Skip If Key NOT pressed)
+    lda OpH : and #&f : tax : ldy Registers,x : lda Keys,y
+    bne noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
+
+.opE:
+    lda OpL
+    { cmp #&9E : bne no : jmp opEX9E : .no }
+    { cmp #&A1 : bne no : jmp opEXA1 : .no }
+    panic " -E???"
 
 .opFX07:
     ;; FX07 (Read Delay Timer)
@@ -517,6 +594,11 @@ endmacro
 .opFX15: {
     ;; FX15 (Set Delay Timer)
     lda OpH : and #&f : tax : lda Registers,x : sta DelayTimer
+    jmp next }
+
+.opFX18: {
+    ;; FX15 (Set Sound Timer)
+    ;; TODO sound
     jmp next }
 
 .opFX1E: {
@@ -594,6 +676,7 @@ endmacro
     lda OpL
     { cmp #&07 : bne no : jmp opFX07 : .no }
     { cmp #&15 : bne no : jmp opFX15 : .no }
+    { cmp #&18 : bne no : jmp opFX18 : .no }
     { cmp #&1E : bne no : jmp opFX1E : .no }
     { cmp #&29 : bne no : jmp opFX29 : .no }
     { cmp #&33 : bne no : jmp opFX33 : .no }
@@ -609,6 +692,7 @@ endmacro
 ;;; ops jump back here after execution
 .next:
     lda vsyncNotify : { beq no : jsr onSync : lda #0 : sta vsyncNotify : .no }
+    ;; jmp next ;; DON'T EXEC ANYTHING
     ;; fetch
     ldy #1 : lda (ProgramCounter),y : sta OpL
     ldy #0 : lda (ProgramCounter),y : sta OpH
