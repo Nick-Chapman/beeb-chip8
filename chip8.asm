@@ -616,7 +616,15 @@ endmacro
     lda OpL : sta Index
     jmp next
 
-.opB: panic " -B???"
+.opB: {
+    ;; BNNN (Jump with offset)
+    lda OpH : and #&f : ora #&20 : sta ProgramCounter+1
+    lda OpL : clc : adc Registers+0
+    sta ProgramCounter
+    bcc done
+    inc ProgramCounter+1
+.done:
+    jmp next }
 
 .opC:
     ;; CXNN (Random)
@@ -681,8 +689,7 @@ endmacro
     bcc done
     inc Index+1
 .done:
-    jmp next
-    }
+    jmp next }
 
 .opFX29: {
     ;; FX29 (Font Character)
