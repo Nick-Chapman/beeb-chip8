@@ -489,7 +489,7 @@ endmacro
     jmp next }
 
 .op6:
-    ;; 6XNN (Set Register)
+    ;; 6XNN (Set Register from Literal)
     lda OpH : and #&f : tax
     lda OpL : sta Registers,x
     jmp next
@@ -501,21 +501,96 @@ endmacro
     jmp next
 
 .op8XY0:
-    ;; 8XY0 (Set)
+    ;; 8XY0 (Set Register: X = Y)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
     lda Registers,y
     sta Registers,x
     jmp next
 
-.op8XY1: panic " -8??1"
-.op8XY2: panic " -8??2"
-.op8XY3: panic " -8??3"
-.op8XY4: panic " -8??4"
-.op8XY5: panic " -8??5"
-.op8XY6: panic " -8??6"
-.op8XY7: panic " -8??7"
-.op8XYE: panic " -8??E"
+.op8XY1:
+    ;; 8XY1 (Register Bitwise Or)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,x
+    ora Registers,y
+    sta Registers,x
+    jmp next
+
+.op8XY2:
+    ;; 8XY2 (Register Bitwise And)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,x
+    and Registers,y
+    sta Registers,x
+    jmp next
+
+.op8XY3:
+    ;; 8XY3 (Register Bitwise Xor)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,x
+    eor Registers,y
+    sta Registers,x
+    jmp next
+
+.op8XY4: {
+    ;; 8XY4 (Register Add)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,x
+    clc : adc Registers,y
+    sta Registers,x
+    bcc noCarry
+    ;;lda #1 : sta Registers+&F ;; TODO carry
+.noCarry:
+    jmp next }
+
+.op8XY5: {
+    ;; 8XY5 (Register Subtract)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,x
+    sec : sbc Registers,y
+    sta Registers,x
+    bcs noCarry ;;!
+    ;;lda #1 : sta Registers+&F ;; TODO carry
+.noCarry:
+    jmp next }
+
+.op8XY7: {
+    ;; 8XY7 (Register Subtract Reverse)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    lda Registers,y
+    sec : sbc Registers,x
+    sta Registers,x
+    bcs noCarry ;;!
+    ;;lda #1 : sta Registers+&F ;; TODO carry
+.noCarry:
+    jmp next }
+
+.op8XY6: {
+    ;; 8XY6 (Register Shift Right)
+    lda OpH : and #&f : tax
+    ;; ignoring Y -- orig chip8 behav was to copy Y to X first
+    lsr Registers,x
+    bcc noCarry
+    ;;lda #1 : sta Registers+&F ;; TODO carry
+.noCarry:
+    jmp next }
+
+.op8XYE: {
+    ;; 8XYE (Register Shift Left)
+    lda OpH : and #&f : tax
+    ;; ignoring Y -- orig chip8 behav was to copy Y to X first
+    asl Registers,x
+    bcc noCarry
+    ;;lda #1 : sta Registers+&F ;; TODO carry
+.noCarry:
+    jmp next }
+
 .op8XYu: panic " -8???"
 
 .dispatchOp8:
@@ -635,9 +710,8 @@ endmacro
     }
 
 .opFX33:
-    ;; FX33 (Binary Coded Decimal Conversion)
+    ;; FX33 (Binary Coded Decimal Conversion) -- TODO: real implementation (remove 567 hack!)
     lda OpH : and #&f : tax : lda Registers,x
-    ;; TODO: split acc to three decimal digits. for now hack it as 567 -- see 67 on screen in brix
     ldy #0
     lda #5
     sta (Index),y
@@ -655,7 +729,7 @@ endmacro
     ldy #0
 .loop:
     lda Registers,y
-    sta (Index),y ;; TODO: orig chip8 behav was to increment Index
+    sta (Index),y ;; orig chip8 behav was to increment Index
     cpy Count
     beq done
     iny
@@ -668,7 +742,7 @@ endmacro
     lda OpH : and #&f : sta Count
     ldy #0
 .loop:
-    lda (Index),y ;; TODO: orig chip8 behav was to increment Index
+    lda (Index),y ;; orig chip8 behav was to increment Index
     sta Registers,y
     cpy Count
     beq done
