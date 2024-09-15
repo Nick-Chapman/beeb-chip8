@@ -524,7 +524,7 @@ endmacro
 
 .op8:
     ;; dispatch2
-    lda OpL : and &0F : asl a : tay
+    lda OpL : and #&f : asl a : tay
     {
     lda dispatchOp8,y : sta smc+1 : iny
     lda dispatchOp8,y : sta smc+2
