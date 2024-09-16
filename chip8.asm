@@ -260,7 +260,8 @@ endmacro
 
 .plotXY: ;; (logical 3)
     ldy #0
-    lda #%11101110
+    lda #%11111111
+    sta (ScreenAddr),y : iny
     sta (ScreenAddr),y : iny
     sta (ScreenAddr),y : iny
     sta (ScreenAddr),y
@@ -268,7 +269,8 @@ endmacro
 
 .unplotXY: ;; (logical 2)
     ldy #0
-    lda #%11100000
+    lda #%11110000
+    sta (ScreenAddr),y : iny
     sta (ScreenAddr),y : iny
     sta (ScreenAddr),y : iny
     sta (ScreenAddr),y
