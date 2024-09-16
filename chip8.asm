@@ -211,19 +211,19 @@ guard screenStart
     cpx #8 : bne cont
     position 16,30
 .cont:
-    cpx #16 : bne loop
+    cpx #3 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
     rts }
 
 .debugState: {
     position 1,26 : puts "PC " : jsr debugPC
     position 1,28 : puts "I  " : jsr debugIndex
     position 1,30 : puts "T  " : lda DelayTimer : jsr printHexA
-    ;;jsr debugRegisters ; TODO: breaks key detection. why ?!? just too slow
-    jsr debugKeys
+    jsr debugRegisters
+    rts
 }
 
 macro panic s
-    jsr debugState
+    ;;jsr debugState
     jsr debugDecode
     puts s
     jmp spin
@@ -398,10 +398,11 @@ endmacro
 
 .onSync:
     inc frameCounter
-    position 1,1 : lda frameCounter : jsr printHexA
+    ;;position 1,1 : lda frameCounter : jsr printHexA
     { lda DelayTimer : beq no : dec DelayTimer : .no }
     jsr readKeys
-    jsr debugState
+    ;;jsr debugState
+    jsr debugKeys
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
