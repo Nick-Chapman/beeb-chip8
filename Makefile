@@ -1,19 +1,19 @@
 
-#default = ibm
-#default = maze
-#default = brix
-#default = 3-corax+
-#default = 4-flags
-#default = 5-quirks
-#default = 6-keypad
-default = tetris
-
 top: run
+all: build-all
+
+default = tetris
 
 run: run-$(default)
 build: build-$(default)
 has: has-$(default)
 dis: dis-$(default)
+
+roms = $(patsubst roms/%.ch8, %, $(wildcard roms/*.ch8))
+ssds = $(patsubst %, _build/%.ssd, $(roms))
+
+build-all: $(ssds)
+	@ echo -n
 
 run-%: _build _build/%.ssd
 	b-em _build/$*.ssd
