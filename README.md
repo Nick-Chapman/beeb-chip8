@@ -2,7 +2,12 @@
 
 Implementation of chip8 for the BBC Micro.
 
-Try [online with jsbeeb](https://nick-chapman.github.io/beeb-chip8)
+Try various roms [online with jsbeeb](https://nick-chapman.github.io/beeb-chip8)
+including
+[brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/brix.ssd&autoboot),
+[invaders](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/invaders.ssd&autoboot),
+[pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot) and
+[tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot).
 
 Some resources:
 - [Cheat sheet for CHIP-8 instructions](https://johnearnest.github.io/Octo/docs/chip8ref.pdf)
