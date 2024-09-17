@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = brix
+default = 3-corax+
 
 run: run-$(default)
 build: build-$(default)

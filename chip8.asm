@@ -353,18 +353,26 @@ endmacro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; macros
 
-macro bumpIndex ; by A
+macro BumpIndex ; by A
     clc : adc Index : sta Index
     { bcc done : inc Index+1 : .done: }
 endmacro
 
-macro setVF N
+macro SetVF N
     lda #N : sta Registers+&F
 endmacro
 
-macro setXfromY
+macro SetXfromY
     lda Registers,y
     sta Registers,x
+endmacro
+
+macro DecodeX
+    lda OpH : and #&f : tax
+endmacro
+
+macro DecodeY
+    lda OpL : shiftRight4 : tay
 endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -399,7 +407,7 @@ endmacro
     bne collision
     jmp plotXY
 .collision:
-    setVF 1
+    SetVF 1
     jmp unplotXY
     }
 
@@ -441,10 +449,10 @@ endmacro
 
 .checkCarryNext: {
     bcs carry
-    setVF 0
+    SetVF 0
     jmp next
 .carry:
-    setVF 1
+    SetVF 1
     jmp next }
 
 .bumpPC: {
@@ -500,7 +508,8 @@ endmacro
 
 .op3: {
     ;; 3XNN (Skip Equal Literal)
-    lda OpH : and #&f : tax : lda Registers,x
+    DecodeX
+    lda Registers,x
     cmp OpL
     bne noSkip
     jsr bumpPC
@@ -509,7 +518,8 @@ endmacro
 
 .op4: {
     ;; 4XNN (Skip Not Equal Literal)
-    lda OpH : and #&f : tax : lda Registers,x
+    DecodeX
+    lda Registers,x
     cmp OpL
     beq noSkip
     jsr bumpPC
@@ -518,8 +528,8 @@ endmacro
 
 .op5: {
     ;; 5XY0 (Skip Equal Regs)
-    lda OpH : and #&f : tax :
-    lda OpL : shiftRight4 : tay :
+    DecodeX
+    DecodeY
     lda Registers,x
     cmp Registers,y
     bne noSkip
@@ -529,57 +539,57 @@ endmacro
 
 .op6:
     ;; 6XNN (Set Register from Literal)
-    lda OpH : and #&f : tax
+    DecodeX
     lda OpL : sta Registers,x
     jmp next
 
 .op7:
     ;; 7XNN (Add To Register)
-    lda OpH : and #&f : tax
+    DecodeX
     lda OpL : clc : adc Registers,x : sta Registers,x
     jmp next
 
 .op8XY0:
     ;; 8XY0 (Set Register: X = Y)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
-    setXfromY
+    DecodeX
+    DecodeY
+    SetXfromY
     jmp next
 
 .op8XY1:
     ;; 8XY1 (Register Bitwise Or)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
+    DecodeX
+    DecodeY
     lda Registers,x
     ora Registers,y
     sta Registers,x
-    setVF 0 ;; "vf-reset" quirk
+    SetVF 0 ;; "vf-reset" quirk
     jmp next
 
 .op8XY2:
     ;; 8XY2 (Register Bitwise And)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
+    DecodeX
+    DecodeY
     lda Registers,x
     and Registers,y
     sta Registers,x
-    setVF 0 ;; "vf-reset" quirk
+    SetVF 0 ;; "vf-reset" quirk
     jmp next
 
 .op8XY3:
     ;; 8XY3 (Register Bitwise Xor)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
+    DecodeX
+    DecodeY
     lda Registers,x
     eor Registers,y
     sta Registers,x
-    setVF 0 ;; "vf-reset" quirk
+    SetVF 0 ;; "vf-reset" quirk
     jmp next
 
 .op8XY4:
     ;; 8XY4 (Register Add)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
+    DecodeX
+    DecodeY
     lda Registers,x
     clc : adc Registers,y
     sta Registers,x
@@ -587,8 +597,8 @@ endmacro
 
 .op8XY5:
     ;; 8XY5 (Register Subtract)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
+    DecodeX
+    DecodeY
     lda Registers,x
     sec : sbc Registers,y
     sta Registers,x
@@ -596,16 +606,16 @@ endmacro
 
 .op8XY6:
     ;; 8XY6 (Register Shift Right)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
-    ;;setXfromY ;; uncomment for "shifting" quirk off. breaks invaders
+    DecodeX
+    DecodeY
+    ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     lsr Registers,x
     jmp checkCarryNext
 
 .op8XY7:
     ;; 8XY7 (Register Subtract Reverse)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
+    DecodeX
+    DecodeY
     lda Registers,y
     sec : sbc Registers,x
     sta Registers,x
@@ -613,9 +623,9 @@ endmacro
 
 .op8XYE:
     ;; 8XYE (Register Shift Left)
-    lda OpH : and #&f : tax
-    lda OpL : shiftRight4 : tay
-    ;;setXfromY ;; uncomment for "shifting" quirk off. breaks invaders
+    DecodeX
+    DecodeY
+    ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     asl Registers,x
     jmp checkCarryNext
 
@@ -634,8 +644,8 @@ endmacro
 
 .op9: {
     ;; 9XY0 (Skip Not Equal Regs)
-    lda OpH : and #&f : tax :
-    lda OpL : shiftRight4 : tay :
+    DecodeX :
+    DecodeY :
     lda Registers,x
     cmp Registers,y
     beq noSkip
@@ -661,7 +671,7 @@ endmacro
 
 .opC:
     ;; CXNN (Random)
-    lda OpH : and #&f : tax
+    DecodeX
     jsr getRandomByte
     and OpL
     sta Registers,x
@@ -669,17 +679,20 @@ endmacro
 
 .opD:
     ;; DXYN (Draw)
-    lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
-    lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
+    DecodeX
+    DecodeY
+    lda Registers,x : sta ScreenX
+    lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
-    setVF 0
+    SetVF 0
     jsr awaitSync ;; display wait (quirk?) ;; needed to slow brix
     jsr drawSprite ;; TODO: inline
     jmp next
 
 .opEX9E: {
     ;; EX9E (Skip If Key pressed)
-    lda OpH : and #&f : tax : ldy Registers,x : lda Keys,y
+    DecodeX
+    ldy Registers,x : lda Keys,y
     beq noSkip
     jsr bumpPC
 .noSkip:
@@ -687,7 +700,8 @@ endmacro
 
 .opEXA1: {
     ;; EXA1 (Skip If Key NOT pressed)
-    lda OpH : and #&f : tax : ldy Registers,x : lda Keys,y
+    DecodeX
+    ldy Registers,x : lda Keys,y
     bne noSkip
     jsr bumpPC
 .noSkip:
@@ -701,7 +715,7 @@ endmacro
 
 .opFX07:
     ;; FX07 (Read Delay Timer)
-    lda OpH : and #&f : tax
+    DecodeX
     lda DelayTimer
     sta Registers,x
     jmp next
@@ -719,30 +733,35 @@ endmacro
     jsr readKeys ;; TODO: okay here? normally we do it in sync
     jmp again
 .press:
-    lda OpH : and #&f : tax : sty Registers,x
+    DecodeX
+    sty Registers,x
     jmp next
     }
 
 .opFX15: {
     ;; FX15 (Set Delay Timer)
-    lda OpH : and #&f : tax : lda Registers,x : sta DelayTimer
+    DecodeX
+    lda Registers,x : sta DelayTimer
     jmp next }
 
 .opFX18: {
     ;; FX15 (Set Sound Timer)
-    lda OpH : and #&f : tax : lda Registers,x : sta SoundTimer
+    DecodeX
+    lda Registers,x : sta SoundTimer
     jsr soundOn
     jmp next }
 
 .opFX1E:
     ;; FX1E (Add To Index)
-    lda OpH : and #&f : tax : lda Registers,x
-    bumpIndex
+    DecodeX
+    lda Registers,x
+    BumpIndex
     jmp next
 
 .opFX29: {
     ;; FX29 (Font Character)
-    lda OpH : and #&f : tax : ldy Registers,x
+    DecodeX
+    ldy Registers,x
     lda #LO(fontData) : sta Index
     lda #HI(fontData) : sta Index+1
     ;; TODO: this loop to multiply by 5 is a silly way to do things
@@ -760,7 +779,8 @@ endmacro
 
 .opFX33: {
     ;; FX33 (BCD - Binary Coded Decimal Conversion)
-    lda OpH : and #&f : tax : lda Registers,x
+    DecodeX
+    lda Registers,x
     sta Divisor
     ldy #3
 .each_digit:
@@ -798,7 +818,7 @@ endmacro
     iny
     jmp loop
 .done:
-    iny : tya : bumpIndex ;; "memory" quirk
+    iny : tya : BumpIndex ;; "memory" quirk
     jmp next }
 
 .opFX65: {
@@ -813,7 +833,7 @@ endmacro
     iny
     jmp loop
 .done:
-    iny : tya : bumpIndex ;; "memory" quirk
+    iny : tya : BumpIndex ;; "memory" quirk
     jmp next }
 
 .opF:
