@@ -1,5 +1,4 @@
 ## Run chip8 in JsBeeb
-- [1-chip8-logo](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/1-chip8-logo.ssd&autoboot)
 - [2-ibm-logo](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/2-ibm-logo.ssd&autoboot)
 - [3-corax+](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/3-corax+.ssd&autoboot)
 - [4-flags](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/4-flags.ssd&autoboot)
@@ -7,6 +6,7 @@
 - [6-keypad](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/6-keypad.ssd&autoboot)
 - [brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/brix.ssd&autoboot)
 - [ibm](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/ibm.ssd&autoboot)
+- [invaders](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/invaders.ssd&autoboot)
 - [maze](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/maze.ssd&autoboot)
 - [pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot)
 - [tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot)

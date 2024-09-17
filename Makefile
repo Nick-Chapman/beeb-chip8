@@ -12,7 +12,14 @@ dis: dis-$(default)
 roms = $(patsubst roms/%.ch8, %, $(wildcard roms/*.ch8))
 ssds = $(patsubst %, _build/%.ssd, $(roms))
 
-build-all: $(ssds)
+release: build-all
+	@ echo Regenerating docs release directory
+	@ rm -rf docs
+	@ mkdir docs
+	@ cp $(ssds) docs
+	@ ./make-docs-index.sh
+
+build-all: _build $(ssds)
 	@ echo -n
 
 run-%: _build _build/%.ssd

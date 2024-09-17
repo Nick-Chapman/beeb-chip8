@@ -854,8 +854,8 @@ endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-print "bytes taken by interpreter: ", *-interpreterStart
-print "bytes remaining for interpreter: ", chip8memStart-*
+;;;print "bytes taken by interpreter: ", *-interpreterStart
+;;;print "bytes remaining for interpreter: ", chip8memStart-*
 org chip8memStart
 ;;;original interpreter lived here in 512 bytes -- now fonts live here.
 
