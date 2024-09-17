@@ -590,7 +590,7 @@ endmacro
     ;; 8XY6 (Register Shift Right)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
-    setXfromY ;; uncomment for "shifting" quirk off
+    ;;setXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     lsr Registers,x
     jmp checkCarryNext
 
@@ -607,7 +607,7 @@ endmacro
     ;; 8XYE (Register Shift Left)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
-    setXfromY ;; uncomment for "shifting" quirk off
+    ;;setXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     asl Registers,x
     jmp checkCarryNext
 

@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = 3-corax+
+default = invaders
 
 run: run-$(default)
 build: build-$(default)
