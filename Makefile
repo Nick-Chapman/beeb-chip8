@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = 3-corax+
+default = 4-flags
 
 run: run-$(default)
 build: build-$(default)

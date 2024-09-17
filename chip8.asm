@@ -508,7 +508,6 @@ endmacro
 
 .op3: {
     ;; 3XNN (Skip Equal Literal)
-    DecodeX
     lda Registers,x
     cmp OpL
     bne noSkip
@@ -518,7 +517,6 @@ endmacro
 
 .op4: {
     ;; 4XNN (Skip Not Equal Literal)
-    DecodeX
     lda Registers,x
     cmp OpL
     beq noSkip
@@ -528,7 +526,6 @@ endmacro
 
 .op5: {
     ;; 5XY0 (Skip Equal Regs)
-    DecodeX
     DecodeY
     lda Registers,x
     cmp Registers,y
@@ -539,26 +536,22 @@ endmacro
 
 .op6:
     ;; 6XNN (Set Register from Literal)
-    DecodeX
     lda OpL : sta Registers,x
     jmp next
 
 .op7:
     ;; 7XNN (Add To Register)
-    DecodeX
     lda OpL : clc : adc Registers,x : sta Registers,x
     jmp next
 
 .op8XY0:
     ;; 8XY0 (Set Register: X = Y)
-    DecodeX
     DecodeY
     SetXfromY
     jmp next
 
 .op8XY1:
     ;; 8XY1 (Register Bitwise Or)
-    DecodeX
     DecodeY
     lda Registers,x
     ora Registers,y
@@ -568,7 +561,6 @@ endmacro
 
 .op8XY2:
     ;; 8XY2 (Register Bitwise And)
-    DecodeX
     DecodeY
     lda Registers,x
     and Registers,y
@@ -578,7 +570,6 @@ endmacro
 
 .op8XY3:
     ;; 8XY3 (Register Bitwise Xor)
-    DecodeX
     DecodeY
     lda Registers,x
     eor Registers,y
@@ -588,7 +579,6 @@ endmacro
 
 .op8XY4:
     ;; 8XY4 (Register Add)
-    DecodeX
     DecodeY
     lda Registers,x
     clc : adc Registers,y
@@ -597,7 +587,6 @@ endmacro
 
 .op8XY5:
     ;; 8XY5 (Register Subtract)
-    DecodeX
     DecodeY
     lda Registers,x
     sec : sbc Registers,y
@@ -606,7 +595,6 @@ endmacro
 
 .op8XY6:
     ;; 8XY6 (Register Shift Right)
-    DecodeX
     DecodeY
     ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     lsr Registers,x
@@ -614,7 +602,6 @@ endmacro
 
 .op8XY7:
     ;; 8XY7 (Register Subtract Reverse)
-    DecodeX
     DecodeY
     lda Registers,y
     sec : sbc Registers,x
@@ -623,7 +610,6 @@ endmacro
 
 .op8XYE:
     ;; 8XYE (Register Shift Left)
-    DecodeX
     DecodeY
     ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     asl Registers,x
@@ -644,7 +630,6 @@ endmacro
 
 .op9: {
     ;; 9XY0 (Skip Not Equal Regs)
-    DecodeX :
     DecodeY :
     lda Registers,x
     cmp Registers,y
@@ -671,7 +656,6 @@ endmacro
 
 .opC:
     ;; CXNN (Random)
-    DecodeX
     jsr getRandomByte
     and OpL
     sta Registers,x
@@ -679,7 +663,6 @@ endmacro
 
 .opD:
     ;; DXYN (Draw)
-    DecodeX
     DecodeY
     lda Registers,x : sta ScreenX
     lda Registers,y : sta ScreenY
@@ -691,7 +674,6 @@ endmacro
 
 .opEX9E: {
     ;; EX9E (Skip If Key pressed)
-    DecodeX
     ldy Registers,x : lda Keys,y
     beq noSkip
     jsr bumpPC
@@ -700,7 +682,6 @@ endmacro
 
 .opEXA1: {
     ;; EXA1 (Skip If Key NOT pressed)
-    DecodeX
     ldy Registers,x : lda Keys,y
     bne noSkip
     jsr bumpPC
@@ -715,7 +696,6 @@ endmacro
 
 .opFX07:
     ;; FX07 (Read Delay Timer)
-    DecodeX
     lda DelayTimer
     sta Registers,x
     jmp next
@@ -733,34 +713,29 @@ endmacro
     jsr readKeys ;; TODO: okay here? normally we do it in sync
     jmp again
 .press:
-    DecodeX
     sty Registers,x
     jmp next
     }
 
 .opFX15: {
     ;; FX15 (Set Delay Timer)
-    DecodeX
     lda Registers,x : sta DelayTimer
     jmp next }
 
 .opFX18: {
     ;; FX15 (Set Sound Timer)
-    DecodeX
     lda Registers,x : sta SoundTimer
     jsr soundOn
     jmp next }
 
 .opFX1E:
     ;; FX1E (Add To Index)
-    DecodeX
     lda Registers,x
     BumpIndex
     jmp next
 
 .opFX29: {
     ;; FX29 (Font Character)
-    DecodeX
     ldy Registers,x
     lda #LO(fontData) : sta Index
     lda #HI(fontData) : sta Index+1
@@ -779,7 +754,6 @@ endmacro
 
 .opFX33: {
     ;; FX33 (BCD - Binary Coded Decimal Conversion)
-    DecodeX
     lda Registers,x
     sta Divisor
     ldy #3
@@ -868,6 +842,7 @@ endmacro
     ;; dispatch
     and #&f0 : shiftRight4 : asl a : tay
     jsr bumpPC
+    DecodeX
     {
     lda dispatchOp,y : sta smc+1 : iny
     lda dispatchOp,y : sta smc+2
