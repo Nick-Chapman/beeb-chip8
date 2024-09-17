@@ -87,6 +87,9 @@ guard &100
 
 .Count skip 1
 
+.Modulus skip 1
+.Divisor skip 1
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Start
 
@@ -95,10 +98,6 @@ guard screenStart
 
 .start:
     jmp main
-
-.main:
-    jsr initialize
-    jmp execute
 
 .spin: jmp spin
 
@@ -211,7 +210,7 @@ guard screenStart
     cpx #8 : bne cont
     position 16,30
 .cont:
-    cpx #3 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
+    cpx #5 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
     rts }
 
 .debugState: {
@@ -257,76 +256,6 @@ endmacro
     clc : .smc_alo : adc #&EE
     sta ScreenAddr
     rts
-
-.plotXY: ;; (logical 3)
-    ldy #0
-    lda #%11111111
-    sta (ScreenAddr),y : iny
-    sta (ScreenAddr),y : iny
-    sta (ScreenAddr),y : iny
-    sta (ScreenAddr),y
-    rts
-
-.unplotXY: ;; (logical 2)
-    ldy #0
-    lda #%11110000
-    sta (ScreenAddr),y : iny
-    sta (ScreenAddr),y : iny
-    sta (ScreenAddr),y : iny
-    sta (ScreenAddr),y
-    rts
-
-.getXY:
-    ldy #0
-    lda (ScreenAddr),y
-    and #&f ;; just look at low nibble to distinuish logical 3 (on) from logical 2 (off)
-    rts
-
-.xorPlotXY: {
-    jsr getXY
-    bne collision
-    jmp plotXY
-.collision:
-    lda #1 : sta Registers+&F
-    jmp unplotXY
-    }
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; draw sprites
-
-.drawSpriteStrip: {
-    lda #8 : sta StripCount
-.loop:
-    jsr calcScreenAddr ;; TODO: avoid doing this for every horizontal pixel
-    asl SpriteStrip
-    bcc after
-    jsr xorPlotXY
-.after:
-    inc ScreenX
-    lda ScreenX
-    cmp #64
-    beq done
-    dec StripCount
-    bne loop
-.done:
-    rts
-    }
-
-.drawSprite: {
-    lda #0 : sta smc_y+1
-.loop:
-    .smc_y : ldy #&EE
-    lda (Index),y : sta SpriteStrip
-    lda ScreenX : sta smc+1
-    jsr drawSpriteStrip ;; TODO inline
-    dec NumLines
-    beq done
-    .smc : lda #&EE : sta ScreenX
-    inc ScreenY
-    inc smc_y+1
-    jmp loop
-.done:
-    rts }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; initialize
@@ -396,26 +325,117 @@ endmacro
     lda interruptSaveA
     rti }
 
-.frameCounter: skip 1
+;;l.frameCounter: skip 1
 
 .onSync:
-    inc frameCounter
+    ;;inc frameCounter
     ;;position 1,1 : lda frameCounter : jsr printHexA
     { lda DelayTimer : beq no : dec DelayTimer : .no }
     jsr readKeys
-    ;;jsr debugState
     jsr debugKeys
+    ;;jsr debugState
+    rts
+
+.awaitSync:
+    lda vsyncNotify
+    beq awaitSync
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ops...
+;;; macros
+
+macro bumpIndex ; by A
+    clc : adc Index : sta Index
+    { bcc done : inc Index+1 : .done: }
+endmacro
+
+macro setVF N
+    lda #N : sta Registers+&F
+endmacro
+
+macro setXfromY
+    lda Registers,y
+    sta Registers,x
+endmacro
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; draw sprites
+
+.plotXY: ;; (logical 3)
+    ldy #0
+    lda #%11111111
+    sta (ScreenAddr),y : iny
+    sta (ScreenAddr),y : iny
+    sta (ScreenAddr),y : iny
+    sta (ScreenAddr),y
+    rts
+
+.unplotXY: ;; (logical 2)
+    ldy #0
+    lda #%11110000
+    sta (ScreenAddr),y : iny
+    sta (ScreenAddr),y : iny
+    sta (ScreenAddr),y : iny
+    sta (ScreenAddr),y
+    rts
+
+.getXY:
+    ldy #0
+    lda (ScreenAddr),y
+    and #&f ;; just look at low nibble to distinuish logical 3 (on) from logical 2 (off)
+    rts
+
+.xorPlotXY: {
+    jsr getXY
+    bne collision
+    jmp plotXY
+.collision:
+    setVF 1
+    jmp unplotXY
+    }
+
+.drawSpriteStrip: {
+    lda #8 : sta StripCount
+.loop:
+    jsr calcScreenAddr ;; TODO: avoid doing this for every horizontal pixel
+    asl SpriteStrip
+    bcc after
+    jsr xorPlotXY
+.after:
+    inc ScreenX
+    lda ScreenX : cmp #64 : beq done ;; quirk, clipping on
+    dec StripCount
+    bne loop
+.done:
+    rts
+    }
+
+.drawSprite: {
+    lda #0 : sta smc_y+1
+.loop:
+    .smc_y : ldy #&EE
+    lda (Index),y : sta SpriteStrip
+    lda ScreenX : sta smc+1
+    jsr drawSpriteStrip ;; TODO inline
+    dec NumLines
+    beq done
+    .smc : lda #&EE : sta ScreenX
+    inc ScreenY
+    lda ScreenY : cmp #32 : beq done ;; quirk, clipping on
+    inc smc_y+1
+    jmp loop
+.done:
+    rts }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ops
 
 .checkCarryNext: {
     bcs carry
-    lda #0 : sta Registers+&F
+    setVF 0
     jmp next
 .carry:
-    lda #1 : sta Registers+&F
+    setVF 1
     jmp next }
 
 .bumpPC: {
@@ -515,8 +535,7 @@ endmacro
     ;; 8XY0 (Set Register: X = Y)
     lda OpH : and #&f : tax
     lda OpL : shiftRight4 : tay
-    lda Registers,y
-    sta Registers,x
+    setXfromY
     jmp next
 
 .op8XY1:
@@ -526,6 +545,7 @@ endmacro
     lda Registers,x
     ora Registers,y
     sta Registers,x
+    setVF 0 ;; "vf-reset" quirk
     jmp next
 
 .op8XY2:
@@ -535,6 +555,7 @@ endmacro
     lda Registers,x
     and Registers,y
     sta Registers,x
+    setVF 0 ;; "vf-reset" quirk
     jmp next
 
 .op8XY3:
@@ -544,6 +565,7 @@ endmacro
     lda Registers,x
     eor Registers,y
     sta Registers,x
+    setVF 0 ;; "vf-reset" quirk
     jmp next
 
 .op8XY4:
@@ -564,6 +586,14 @@ endmacro
     sta Registers,x
     jmp checkCarryNext
 
+.op8XY6:
+    ;; 8XY6 (Register Shift Right)
+    lda OpH : and #&f : tax
+    lda OpL : shiftRight4 : tay
+    setXfromY ;; uncomment for "shifting" quirk off
+    lsr Registers,x
+    jmp checkCarryNext
+
 .op8XY7:
     ;; 8XY7 (Register Subtract Reverse)
     lda OpH : and #&f : tax
@@ -573,17 +603,11 @@ endmacro
     sta Registers,x
     jmp checkCarryNext
 
-.op8XY6:
-    ;; 8XY6 (Register Shift Right)
-    lda OpH : and #&f : tax
-    ;; ignoring Y -- orig chip8 behav was to copy Y to X first
-    lsr Registers,x
-    jmp checkCarryNext
-
 .op8XYE:
     ;; 8XYE (Register Shift Left)
     lda OpH : and #&f : tax
-    ;; ignoring Y -- orig chip8 behav was to copy Y to X first
+    lda OpL : shiftRight4 : tay
+    setXfromY ;; uncomment for "shifting" quirk off
     asl Registers,x
     jmp checkCarryNext
 
@@ -642,7 +666,8 @@ endmacro
     lda OpH : and #&f : tax : lda Registers,x : sta ScreenX
     lda OpL : shiftRight4 : tay : lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
-    lda #0 : sta Registers+&F
+    setVF 0
+    jsr awaitSync ;; display wait (quirk?) ;; needed to slow brix
     jsr drawSprite ;; TODO: inline
     jmp next
 
@@ -702,14 +727,11 @@ endmacro
     ;; TODO sound
     jmp next }
 
-.opFX1E: {
+.opFX1E:
     ;; FX1E (Add To Index)
     lda OpH : and #&f : tax : lda Registers,x
-    clc : adc Index : sta Index
-    bcc done
-    inc Index+1
-.done:
-    jmp next }
+    bumpIndex
+    jmp next
 
 .opFX29: {
     ;; FX29 (Font Character)
@@ -729,19 +751,33 @@ endmacro
     jmp next
     }
 
-.opFX33:
-    ;; FX33 (Binary Coded Decimal Conversion) -- TODO: real implementation (remove 567 hack!)
+.opFX33: {
+    ;; FX33 (BCD - Binary Coded Decimal Conversion)
     lda OpH : and #&f : tax : lda Registers,x
-    ldy #0
-    lda #5
+    sta Divisor
+    ldy #3
+.each_digit:
+    lda #0
+    sta Modulus
+    clc
+    ldx #8
+.each_bit:
+    rol Divisor
+    rol Modulus
+    sec
+    lda Modulus
+    sbc #10
+    bcc ignore_result
+    sta Modulus
+.ignore_result:
+    dex
+    bne each_bit
+    rol Divisor
+    lda Modulus
+    dey
     sta (Index),y
-    ldy #1
-    lda #6
-    sta (Index),y
-    ldy #2
-    lda #7
-    sta (Index),y
-    jmp next
+    bne each_digit
+    jmp next }
 
 .opFX55: {
     ;; FX55 (Save Registers)
@@ -749,12 +785,13 @@ endmacro
     ldy #0
 .loop:
     lda Registers,y
-    sta (Index),y ;; orig chip8 behav was to increment Index
+    sta (Index),y
     cpy Count
     beq done
     iny
     jmp loop
 .done:
+    iny : tya : bumpIndex ;; "memory" quirk
     jmp next }
 
 .opFX65: {
@@ -762,13 +799,14 @@ endmacro
     lda OpH : and #&f : sta Count
     ldy #0
 .loop:
-    lda (Index),y ;; orig chip8 behav was to increment Index
+    lda (Index),y
     sta Registers,y
     cpy Count
     beq done
     iny
     jmp loop
 .done:
+    iny : tya : bumpIndex ;; "memory" quirk
     jmp next }
 
 .opF:
@@ -787,12 +825,16 @@ endmacro
 .dispatchOp : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; next/execute
+;;; execute/next
+
+.execute:
+    lda #LO(romStart) : sta ProgramCounter
+    lda #HI(romStart) : sta ProgramCounter+1
+    jmp op00E0 ;; initial clear screen; continues at next
 
 ;;; ops jump back here after execution
 .next:
     lda vsyncNotify : { beq no : jsr onSync : lda #0 : sta vsyncNotify : .no }
-    ;; jmp next ;; DON'T EXEC ANYTHING
     ;; fetch
     ldy #1 : lda (ProgramCounter),y : sta OpL
     ldy #0 : lda (ProgramCounter),y : sta OpH
@@ -805,17 +847,17 @@ endmacro
     .smc : jmp &EEEE
     }
 
-.execute:
-    lda #LO(romStart) : sta ProgramCounter
-    lda #HI(romStart) : sta ProgramCounter+1
-    jmp op00E0 ;; initial clear screen; continues at next
+
+.main:
+    jsr initialize
+    jmp execute
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 print "bytes taken by interpreter: ", *-interpreterStart
 print "bytes remaining for interpreter: ", chip8memStart-*
 org chip8memStart
-;;original interpreter lived here in 512 bytes -- now fonts live here.
+;;;original interpreter lived here in 512 bytes -- now fonts live here.
 
 .fontData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
 sizeFontData = *-fontData
@@ -841,10 +883,15 @@ equb &70,&3b,&a5,&0d,&f2,&13,&e8,&72,&9b,&e0,&ad,&7e,&aa,&8e,&d0,&f5
 sizeRandomBytes = *-randomBytes
 assert sizeRandomBytes = 256
 
-for i, 1, 512-sizeFontData-sizeRandomBytes : equb 0 : next
+for i, 1, 511-sizeFontData-sizeRandomBytes : equb 0 : next
+;;; final byte before rom, controls behaviour of the quicks test rom
+equb 1 ;; select chip8 without needing input form the keypad
+
 .romStart:
-incbin ROM
 assert (romStart = &2200)
+
+incbin ROM
+
 .end:
 
 save "Code", start, end

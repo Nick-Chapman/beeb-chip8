@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = tetris
+default = 3-corax+
 
 run: run-$(default)
 build: build-$(default)
