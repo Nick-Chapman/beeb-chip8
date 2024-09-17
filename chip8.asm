@@ -1,4 +1,6 @@
 
+Debug = FALSE
+
 interpreterStart = &1100
 chip8memStart = &2000 ;; 4k
 screenStart = &3000 ;; mode-1
@@ -182,52 +184,6 @@ guard screenStart
 
 .KeyPadLayoutOrder equb 1,2,3,&C,4,5,6,&D,7,8,9,&E,&A,0,&B,&F
 
-.debugKeys: {
-    lda #0 : sta Count
-.loop:
-    lda Count : tax
-    and #&3 : bne noRePosition : txa : lsr a : lsr a : tay : iny : positionVarY 35 : .noRePosition
-    lda KeyPadLayoutOrder,x : tax
-    lda HexDigits,x : ldy Keys,x : { bne no : lda #'.' : .no } : jsr osasci : inx
-    inc Count
-    lda Count
-    cmp #16
-    bne loop
-    rts }
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; debug
-
-.debugPC:
-    lda ProgramCounter+1 : and #&0f : jsr printHexA
-    lda ProgramCounter   : jsr printHexA
-    rts
-
-.debugIndex:
-    lda Index+1 : and #&0f : jsr printHexA
-    lda Index   : jsr printHexA
-    rts
-
-.debugRegisters: {
-    position 16,26
-    ldx #0
-.loop:
-    lda Registers,x : jsr printHexA : space : inx
-    cpx #8 : bne cont
-    position 16,27
-.cont:
-    cpx #5 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
-    rts }
-
-.debugState: {
-    position 1,26 : puts "PC " : jsr debugPC
-    position 1,27 : puts "I  " : jsr debugIndex
-    position 1,28 : puts "T  " : lda DelayTimer : jsr printHexA
-    position 1,29 : puts "S  " : lda SoundTimer : jsr printHexA
-    ;;jsr debugRegisters
-    rts
-}
-
 macro panic S
     puts S
     jmp spin
@@ -377,16 +333,16 @@ endmacro
     lda interruptSaveA
     rti }
 
-;;l.frameCounter: skip 1
-
 .onSync:
-    ;;inc frameCounter
-    ;;position 1,1 : lda frameCounter : jsr printHexA
     jsr silenceMaybe
     { lda DelayTimer : beq no : dec DelayTimer : .no }
     jsr readKeys
-    ;;jsr debugKeys
-    ;;jsr debugState
+    if Debug
+      inc frameCounter
+      position 37,30 : lda frameCounter : jsr printHexA
+      jsr debugKeys
+      jsr debugState
+    endif
     rts
 
 .awaitSync:
@@ -913,9 +869,61 @@ endmacro
     jmp execute
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; debug
+
+if Debug
+
+.frameCounter: skip 1
+
+.debugKeys: {
+    lda #0 : sta Count
+.loop:
+    lda Count : tax
+    and #&3 : bne noRePosition : txa : lsr a : lsr a : tay : iny : positionVarY 35 : .noRePosition
+    lda KeyPadLayoutOrder,x : tax
+    lda HexDigits,x : ldy Keys,x : { bne no : lda #'.' : .no } : jsr osasci : inx
+    inc Count
+    lda Count
+    cmp #16
+    bne loop
+    rts }
+
+.debugPC:
+    lda ProgramCounter+1 : and #&0f : jsr printHexA
+    lda ProgramCounter   : jsr printHexA
+    rts
+
+.debugIndex:
+    lda Index+1 : and #&0f : jsr printHexA
+    lda Index   : jsr printHexA
+    rts
+
+.debugRegisters: {
+    position 16,26
+    ldx #0
+.loop:
+    lda Registers,x : jsr printHexA : space : inx
+    cpx #8 : bne cont
+    position 16,27
+.cont:
+    cpx #16 : bne loop
+    rts }
+
+.debugState: {
+    position 1,26 : puts "PC " : jsr debugPC
+    position 1,27 : puts "I  " : jsr debugIndex
+    position 1,28 : puts "T  " : lda DelayTimer : jsr printHexA
+    position 1,29 : puts "S  " : lda SoundTimer : jsr printHexA
+    jsr debugRegisters
+    rts
+}
+
+endif
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 print "bytes taken by interpreter: ", *-interpreterStart
-;;;print "bytes remaining for interpreter: ", chip8memStart-*
+
 org chip8memStart
 ;;;original interpreter lived here in 512 bytes -- now fonts live here.
 
