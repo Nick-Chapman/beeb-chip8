@@ -526,7 +526,6 @@ endmacro
 
 .op5: {
     ;; 5XY0 (Skip Equal Regs)
-    DecodeY
     lda Registers,x
     cmp Registers,y
     bne noSkip
@@ -546,13 +545,11 @@ endmacro
 
 .op8XY0:
     ;; 8XY0 (Set Register: X = Y)
-    DecodeY
     SetXfromY
     jmp next
 
 .op8XY1:
     ;; 8XY1 (Register Bitwise Or)
-    DecodeY
     lda Registers,x
     ora Registers,y
     sta Registers,x
@@ -561,7 +558,6 @@ endmacro
 
 .op8XY2:
     ;; 8XY2 (Register Bitwise And)
-    DecodeY
     lda Registers,x
     and Registers,y
     sta Registers,x
@@ -570,7 +566,6 @@ endmacro
 
 .op8XY3:
     ;; 8XY3 (Register Bitwise Xor)
-    DecodeY
     lda Registers,x
     eor Registers,y
     sta Registers,x
@@ -579,7 +574,6 @@ endmacro
 
 .op8XY4:
     ;; 8XY4 (Register Add)
-    DecodeY
     lda Registers,x
     clc : adc Registers,y
     sta Registers,x
@@ -587,7 +581,6 @@ endmacro
 
 .op8XY5:
     ;; 8XY5 (Register Subtract)
-    DecodeY
     lda Registers,x
     sec : sbc Registers,y
     sta Registers,x
@@ -595,14 +588,12 @@ endmacro
 
 .op8XY6:
     ;; 8XY6 (Register Shift Right)
-    DecodeY
     ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     lsr Registers,x
     jmp checkCarryNext
 
 .op8XY7:
     ;; 8XY7 (Register Subtract Reverse)
-    DecodeY
     lda Registers,y
     sec : sbc Registers,x
     sta Registers,x
@@ -610,7 +601,6 @@ endmacro
 
 .op8XYE:
     ;; 8XYE (Register Shift Left)
-    DecodeY
     ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
     asl Registers,x
     jmp checkCarryNext
@@ -625,6 +615,7 @@ endmacro
     {
     lda dispatchOp8,y : sta smc+1 : iny
     lda dispatchOp8,y : sta smc+2
+    DecodeY
     .smc : jmp &EEEE
     }
 
