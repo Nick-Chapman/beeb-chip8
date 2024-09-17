@@ -14,6 +14,8 @@ system_VIA_interruptFlags   = &fe4d
 system_VIA_interruptEnable  = &fe4e
 system_VIA_portA            = &fe4f
 
+soundChipData = system_VIA_portA
+
 ;;; MOS entry points
 osasci = &ffe3
 osnewl = &ffe7
@@ -69,6 +71,7 @@ guard &100
 .ProgramCounter skip 2
 .Index skip 2
 .DelayTimer skip 1
+.SoundTimer skip 1
 .Registers skip 16
 
 .MsgPtr skip 2
@@ -216,7 +219,8 @@ guard screenStart
     position 1,26 : puts "PC " : jsr debugPC
     position 1,27 : puts "I  " : jsr debugIndex
     position 1,28 : puts "T  " : lda DelayTimer : jsr printHexA
-    jsr debugRegisters
+    position 1,29 : puts "S  " : lda SoundTimer : jsr printHexA
+    ;;jsr debugRegisters
     rts
 }
 
@@ -314,6 +318,45 @@ macro badop : jmp badop : endmacro
     rts
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; sound
+
+macro DEL20 : nop:nop:nop:nop:nop:nop:nop:nop:nop:nop : endmacro
+
+.pulseWriteSound:
+    ;; switch to sound mode
+    lda #%11111111 : sta system_VIA_dataDirectionA ; (All bits output)
+    lda #%00001011 : sta system_VIA_portB ; set bit 3 to 1
+    ;; pulse sound write
+    lda #%00000000 : sta system_VIA_portB
+    DEL20
+    lda #%00001000 : sta system_VIA_portB
+    DEL20
+    ;; back to keys mode
+    lda #%00000011 : sta system_VIA_portB ; set bit 3 to 0
+    lda #%01111111 : sta system_VIA_dataDirectionA ; (top bit input)
+    rts
+
+macro SEND
+    sta soundChipData
+    jsr pulseWriteSound
+endmacro
+
+.soundOn:
+    lda #&89 : SEND
+    lda #&3b : SEND
+    lda #&90 : SEND
+    rts
+
+.silenceMaybe: {
+    lda SoundTimer
+    bne no
+    lda #&9f : SEND ; sound off
+    rts
+.no:
+    dec SoundTimer
+    rts }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; screen interrupts
 
 .vsyncNotify equb 0 ; -> 1
@@ -335,6 +378,7 @@ macro badop : jmp badop : endmacro
 .onSync:
     ;;inc frameCounter
     ;;position 1,1 : lda frameCounter : jsr printHexA
+    jsr silenceMaybe
     { lda DelayTimer : beq no : dec DelayTimer : .no }
     jsr readKeys
     ;;jsr debugKeys
@@ -726,7 +770,8 @@ endmacro
 
 .opFX18: {
     ;; FX15 (Set Sound Timer)
-    ;; TODO sound
+    lda OpH : and #&f : tax : lda Registers,x : sta SoundTimer
+    jsr soundOn
     jmp next }
 
 .opFX1E:

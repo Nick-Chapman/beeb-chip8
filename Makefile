@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = invaders
+default = brix
 
 run: run-$(default)
 build: build-$(default)
