@@ -1,5 +1,4 @@
 ## Run chip8 in JsBeeb
-- [2-ibm-logo](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/2-ibm-logo.ssd&autoboot)
 - [3-corax+](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/3-corax+.ssd&autoboot)
 - [4-flags](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/4-flags.ssd&autoboot)
 - [5-quirks](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/5-quirks.ssd&autoboot)
