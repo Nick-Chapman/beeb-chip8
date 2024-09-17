@@ -16,6 +16,7 @@ system_VIA_portA            = &fe4f
 
 ;;; MOS entry points
 osasci = &ffe3
+osnewl = &ffe7
 oswrch = &ffee
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,10 +52,8 @@ macro puts S
 endmacro
 
 macro emit C
-    ;;pha
     lda #C
     jsr osasci
-    ;;pla
 endmacro
 
 macro space
@@ -101,12 +100,21 @@ guard screenStart
 
 .spin: jmp spin
 
+.writeChar: { ; converting asci 10 --> NL
+    cmp #10
+    bne ok
+    ;;jmp osnewl ;; not working
+    rts
+.ok:
+    jmp osasci ; has special handling for 13 -> NL
+    }
+
 .printString: {
     ldy #0
 .loop
     lda (MsgPtr),y
     beq done
-    jsr osasci
+    jsr writeChar
     iny
     bne loop
 .done:
@@ -201,7 +209,7 @@ guard screenStart
     cpx #8 : bne cont
     position 16,27
 .cont:
-    cpx #16 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
+    cpx #5 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
     rts }
 
 .debugState: {
@@ -843,7 +851,12 @@ endmacro
 
 .main:
     jsr initialize
+    position 1,1 : copy16iv info, MsgPtr : jsr printString
     jmp execute
+
+.info:
+incbin INFO
+equb 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

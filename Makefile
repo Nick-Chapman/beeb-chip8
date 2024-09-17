@@ -29,9 +29,13 @@ build-%: _build _build/%.ssd
 	@ echo -n
 
 .PRECIOUS:_build/%.ssd
-_build/%.ssd: chip8.asm Makefile
+_build/%.ssd: chip8.asm roms/%.ch8 roms/%.info Makefile
 	@ echo Building .ssd for chip8 rom: $*
-	@ beebasm -S ROM=roms/$*.ch8 -w -i $< -do $@ -boot Code || rm $@
+	@ beebasm -S INFO=roms/$*.info -S ROM=roms/$*.ch8 -w -i $< -do $@ -boot Code || rm $@
+
+.PRECIOUS:roms/%.info
+roms/%.info:
+	echo $* > $@
 
 _build: ; @mkdir -p $@
 
