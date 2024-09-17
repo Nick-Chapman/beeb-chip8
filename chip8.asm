@@ -445,7 +445,7 @@ endmacro
     rts }
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; ops
+;;; finish op
 
 .checkCarryNext: {
     bcs carry
@@ -462,6 +462,21 @@ endmacro
     inc ProgramCounter+1
 .done:
     rts }
+
+.skipEQ: {
+    bne noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
+
+.skipNE: {
+    beq noSkip
+    jsr bumpPC
+.noSkip:
+    jmp next }
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; ops
 
 .op00E0: {
     ;; 00E0 (Clear Screen) ;; TODO: optimize this!
@@ -506,32 +521,23 @@ endmacro
     lda OpL : sta ProgramCounter
     jmp next
 
-.op3: {
+.op3:
     ;; 3XNN (Skip Equal Literal)
     lda Registers,x
     cmp OpL
-    bne noSkip
-    jsr bumpPC
-.noSkip:
-    jmp next }
+    jmp skipEQ
 
-.op4: {
+.op4:
     ;; 4XNN (Skip Not Equal Literal)
     lda Registers,x
     cmp OpL
-    beq noSkip
-    jsr bumpPC
-.noSkip:
-    jmp next }
+    jmp skipNE
 
-.op5: {
+.op5:
     ;; 5XY0 (Skip Equal Regs)
     lda Registers,x
     cmp Registers,y
-    bne noSkip
-    jsr bumpPC
-.noSkip:
-    jmp next }
+    jmp skipEQ
 
 .op6:
     ;; 6XNN (Set Register from Literal)
@@ -619,15 +625,12 @@ endmacro
     .smc : jmp &EEEE
     }
 
-.op9: {
+.op9:
     ;; 9XY0 (Skip Not Equal Regs)
-    DecodeY :
+    DecodeY
     lda Registers,x
     cmp Registers,y
-    beq noSkip
-    jsr bumpPC
-.noSkip:
-    jmp next }
+    jmp skipNE
 
 .opA:
     ;; ANNN (Set Index Register)
@@ -663,21 +666,15 @@ endmacro
     jsr drawSprite ;; TODO: inline
     jmp next
 
-.opEX9E: {
+.opEX9E:
     ;; EX9E (Skip If Key pressed)
     ldy Registers,x : lda Keys,y
-    beq noSkip
-    jsr bumpPC
-.noSkip:
-    jmp next }
+    jmp skipNE
 
-.opEXA1: {
+.opEXA1:
     ;; EXA1 (Skip If Key NOT pressed)
     ldy Registers,x : lda Keys,y
-    bne noSkip
-    jsr bumpPC
-.noSkip:
-    jmp next }
+    jmp skipEQ
 
 .opE:
     lda OpL
