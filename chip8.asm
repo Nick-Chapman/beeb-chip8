@@ -193,40 +193,37 @@ guard screenStart
     lda Index   : jsr printHexA
     rts
 
-.debugDecode:
-    position 1,3
-    puts "pc' " : jsr debugPC
-    position 10,3
-    puts "op "
-    lda OpH : jsr printHexA
-    lda OpL : jsr printHexA
-    rts
-
 .debugRegisters: {
-    position 16,28
+    position 16,26
     ldx #0
 .loop:
     lda Registers,x : jsr printHexA : space : inx
     cpx #8 : bne cont
-    position 16,30
+    position 16,27
 .cont:
-    cpx #5 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
+    cpx #16 : bne loop ; TODO: all 16 reg breaks key detection. why ?!? just too slow
     rts }
 
 .debugState: {
     position 1,26 : puts "PC " : jsr debugPC
-    position 1,28 : puts "I  " : jsr debugIndex
-    position 1,30 : puts "T  " : lda DelayTimer : jsr printHexA
+    position 1,27 : puts "I  " : jsr debugIndex
+    position 1,28 : puts "T  " : lda DelayTimer : jsr printHexA
     jsr debugRegisters
     rts
 }
 
-macro panic s
-    ;;jsr debugState
-    jsr debugDecode
-    puts s
+macro panic S
+    puts S
     jmp spin
 endmacro
+
+.badop:
+    position 1,30
+    lda OpH : jsr printHexA
+    lda OpL : jsr printHexA
+    panic " badop"
+
+macro badop : jmp badop : endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Screen Address calculation.
@@ -332,7 +329,7 @@ endmacro
     ;;position 1,1 : lda frameCounter : jsr printHexA
     { lda DelayTimer : beq no : dec DelayTimer : .no }
     jsr readKeys
-    jsr debugKeys
+    ;;jsr debugKeys
     ;;jsr debugState
     rts
 
@@ -447,7 +444,7 @@ endmacro
     rts }
 
 .op00E0: {
-    ;; 00E0 (clear screen) ;; TODO: optimize this!
+    ;; 00E0 (Clear Screen) ;; TODO: optimize this!
     lda #0 : sta ScreenY
 .loopY
     lda #63 : sta ScreenX
@@ -467,14 +464,13 @@ endmacro
     pla : sta ProgramCounter+1
     jmp next
 
-.op0:
-    lda OpH : cmp #0 : bne op0u
+.op0: {
+    lda OpH : cmp #0 : bne bad
     lda OpL
     { cmp #&ee : bne no : jmp op00EE : .no }
     { cmp #&e0 : bne no : jmp op00E0 : .no }
-    panic " -00??"
-.op0u:
-    panic " -0???"
+.bad:
+    badop }
 
 .op1:
     ;; 1NNN (Jump)
@@ -611,11 +607,9 @@ endmacro
     asl Registers,x
     jmp checkCarryNext
 
-.op8XYu: panic " -8???"
-
 .dispatchOp8:
     equw op8XY0,op8XY1,op8XY2,op8XY3,op8XY4,op8XY5,op8XY6,op8XY7
-    equw op8XYu,op8XYu,op8XYu,op8XYu,op8XYu,op8XYu,op8XYE,op8XYu
+    equw badop,badop, badop, badop, badop, badop, op8XYE,badop
 
 .op8:
     ;; dispatch2
@@ -691,7 +685,7 @@ endmacro
     lda OpL
     { cmp #&9E : bne no : jmp opEX9E : .no }
     { cmp #&A1 : bne no : jmp opEXA1 : .no }
-    panic " -E???"
+    badop
 
 .opFX07:
     ;; FX07 (Read Delay Timer)
@@ -820,7 +814,7 @@ endmacro
     { cmp #&33 : bne no : jmp opFX33 : .no }
     { cmp #&55 : bne no : jmp opFX55 : .no }
     { cmp #&65 : bne no : jmp opFX65 : .no }
-    panic " -F???"
+    badop
 
 .dispatchOp : equw op0,op1,op2,op3,op4,op5,op6,op7,op8,op9,opA,opB,opC,opD,opE,opF
 
@@ -847,14 +841,13 @@ endmacro
     .smc : jmp &EEEE
     }
 
-
 .main:
     jsr initialize
     jmp execute
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;print "bytes taken by interpreter: ", *-interpreterStart
+print "bytes taken by interpreter: ", *-interpreterStart
 ;;;print "bytes remaining for interpreter: ", chip8memStart-*
 org chip8memStart
 ;;;original interpreter lived here in 512 bytes -- now fonts live here.
