@@ -542,6 +542,7 @@ endmacro
 
 .op5:
     ;; 5XY0 (Skip Equal Regs)
+    DecodeY
     lda Registers,x
     cmp Registers,y
     jmp skipEQ
@@ -929,7 +930,7 @@ assert (sizeFontData = 16*(5+3))
 
 for i, 1, 511-sizeFontData : equb 0 : next
 ;;; final byte before rom, controls behaviour of the quicks test rom
-equb 1 ;; select chip8 without needing input form the keypad
+equb 0 ;; select chip8 without needing input form the keypad
 
 .romStart:
 assert (romStart = &2200)
