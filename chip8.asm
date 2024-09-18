@@ -729,23 +729,13 @@ endmacro
     BumpIndex
     jmp next
 
-.opFX29: {
+.opFX29:
     ;; FX29 (Font Character)
-    ldy Registers,x
-    lda #LO(fontData) : sta Index
     lda #HI(fontData) : sta Index+1
-    ;; TODO: this loop to multiply by 5 is a silly way to do things
-    ;; better to use a dispatch table, or maybe just space out the chars by 8 not 5
-.loop:
-    dey
-    bmi done
-    clc
-    lda Index   : adc #5 : sta Index
-    lda Index+1 : adc #0 : sta Index+1
-    jmp loop
-.done:
+    lda Registers,x
+    asl a : asl a : asl a
+    sta Index
     jmp next
-    }
 
 .opFX33: {
     ;; FX33 (BCD - Binary Coded Decimal Conversion)
@@ -917,9 +907,25 @@ print "bytes taken by interpreter: ", *-interpreterStart
 org chip8memStart
 ;;;original interpreter lived here in 512 bytes -- now fonts live here.
 
-.fontData: equb &f0,&90,&90,&90,&f0, &20,&60,&20,&20,&70, &f0,&10,&f0,&80,&f0, &f0,&10,&f0,&10,&f0, &90,&90,&f0,&10,&10, &f0,&80,&f0,&10,&f0, &f0,&80,&f0,&90,&f0, &f0,&10,&20,&40,&40, &f0,&90,&f0,&90,&f0, &f0,&90,&f0,&10,&f0, &f0,&90,&f0,&90,&90, &e0,&90,&e0,&90,&e0, &f0,&80,&80,&80,&f0, &e0,&90,&90,&90,&e0, &f0,&80,&f0,&80,&f0, &f0,&80,&f0,&80,&80
+.fontData: ;; page aligned, and padded to 8 bytes per digit
+equb &f0,&90,&90,&90,&f0,0,0,0
+equb &20,&60,&20,&20,&70,0,0,0
+equb &f0,&10,&f0,&80,&f0,0,0,0
+equb &f0,&10,&f0,&10,&f0,0,0,0
+equb &90,&90,&f0,&10,&10,0,0,0
+equb &f0,&80,&f0,&10,&f0,0,0,0
+equb &f0,&80,&f0,&90,&f0,0,0,0
+equb &f0,&10,&20,&40,&40,0,0,0
+equb &f0,&90,&f0,&90,&f0,0,0,0
+equb &f0,&90,&f0,&10,&f0,0,0,0
+equb &f0,&90,&f0,&90,&90,0,0,0
+equb &e0,&90,&e0,&90,&e0,0,0,0
+equb &f0,&80,&80,&80,&f0,0,0,0
+equb &e0,&90,&90,&90,&e0,0,0,0
+equb &f0,&80,&f0,&80,&f0,0,0,0
+equb &f0,&80,&f0,&80,&80,0,0,0
 sizeFontData = *-fontData
-assert (sizeFontData = 80)
+assert (sizeFontData = 16*(5+3))
 
 for i, 1, 511-sizeFontData : equb 0 : next
 ;;; final byte before rom, controls behaviour of the quicks test rom
