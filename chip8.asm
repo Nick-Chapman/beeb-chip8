@@ -226,6 +226,12 @@ macro badop : jmp badop : endmacro
     sta ScreenAddr
     rts
 
+.moveRight:
+    inc ScreenX
+    clc : lda ScreenAddr : adc #8 : sta ScreenAddr
+    lda #0 : adc ScreenAddr+1 : sta ScreenAddr+1
+    rts
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; initialize
 
@@ -479,15 +485,16 @@ endmacro
 ;;; ops
 
 .op00E0: {
-    ;; 00E0 (Clear Screen) ;; TODO: optimize this!
+    ;; 00E0 (Clear Screen)
     lda #0 : sta ScreenY
 .loopY
-    lda #63 : sta ScreenX
-.loopX:
+    lda #0 : sta ScreenX
     jsr calcScreenAddr
+.loopX:
     jsr unplotXY
-    dec ScreenX
-    bpl loopX
+    jsr moveRight
+    lda ScreenX : cmp #64
+    bne loopX
     inc ScreenY
     lda ScreenY : cmp #32
     bne loopY

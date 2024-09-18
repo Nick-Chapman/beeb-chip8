@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = 4-flags
+default = ibm
 
 run: run-$(default)
 build: build-$(default)
