@@ -6,6 +6,8 @@
 - [brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/brix.ssd&autoboot)
 - [ibm](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/ibm.ssd&autoboot)
 - [invaders](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/invaders.ssd&autoboot)
+- [life](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/life.ssd&autoboot)
 - [maze](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/maze.ssd&autoboot)
+- [pi](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pi.ssd&autoboot)
 - [pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot)
 - [tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot)

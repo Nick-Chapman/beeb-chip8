@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = ibm
+default = pi
 
 run: run-$(default)
 build: build-$(default)
@@ -46,3 +46,7 @@ has-%:
 # dissasemble using my haskell interpreter
 dis-%:
 	cat roms/$*.ch8 | (cd ../../code/chip8; stack run /dev/stdin -- --dump)
+
+roms/pi.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --pi --assemble)
+	cp ../chip8/pi.ch8 roms
