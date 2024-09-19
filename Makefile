@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = pi
+default = 6-keypad
 
 run: run-$(default)
 build: build-$(default)

@@ -327,6 +327,9 @@ endmacro
 
 .vsyncNotify equb 0 ; -> 1
 
+macro phxy : txa : pha : tya : pha : endmacro
+macro plxy : pla : tay : pla : tax : endmacro
+
 .myIRQ: {
     lda system_VIA_interruptFlags : and #2 : bne vblank
     panic "unexpected interrupt"
@@ -335,6 +338,9 @@ endmacro
     rti
 .vblank:
     sta system_VIA_interruptFlags ; ack
+    phxy
+    jsr onSync
+    plxy
     inc vsyncNotify
     lda interruptSaveA
     rti }
@@ -351,10 +357,13 @@ endmacro
     endif
     rts
 
+macro awaitSync
 .awaitSync:
     lda vsyncNotify
     beq awaitSync
-    rts
+    lda #0
+    sta vsyncNotify
+endmacro
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; macros
@@ -420,7 +429,7 @@ endmacro
 .drawSpriteStrip: {
     lda #8 : sta StripCount
 .loop:
-    jsr calcScreenAddr ;; TODO: avoid doing this for every horizontal pixel
+    jsr calcScreenAddr
     asl SpriteStrip
     bcc after
     jsr xorPlotXY
@@ -439,7 +448,7 @@ endmacro
     .smc_y : ldy #&EE
     lda (Index),y : sta SpriteStrip
     lda ScreenX : sta smc+1
-    jsr drawSpriteStrip ;; TODO inline
+    jsr drawSpriteStrip
     dec NumLines
     beq done
     .smc : lda #&EE : sta ScreenX
@@ -670,8 +679,8 @@ endmacro
     lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
     SetVF 0
-    jsr awaitSync ;; display wait (quirk?) ;; needed to slow brix
-    jsr drawSprite ;; TODO: inline
+    awaitSync ;; display wait quirk
+    jsr drawSprite
     jmp next
 
 .opEX9E:
@@ -698,18 +707,20 @@ endmacro
 
 .opFX0A: {
     ;; FX0A (Blocking Get Key)
-.again:
+.scanKeys:
     ldy #0
 .loop:
     lda Keys,y
-    bne press
+    bne pressed
     iny
     cpy #16
     bne loop
-    jsr readKeys ;; TODO: okay here? normally we do it in sync
-    jmp again
-.press:
+    jmp scanKeys
+.pressed:
     sty Registers,x
+.stillPressed:
+    lda Keys,y
+    bne stillPressed
     jmp next
     }
 
@@ -821,7 +832,6 @@ endmacro
 
 ;;; ops jump back here after execution
 .next:
-    lda vsyncNotify : { beq no : jsr onSync : lda #0 : sta vsyncNotify : .no }
     ;; fetch
     ldy #1 : lda (ProgramCounter),y : sta OpL
     ldy #0 : lda (ProgramCounter),y : sta OpH
