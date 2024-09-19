@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = 6-keypad
+default = invaders
 
 run: run-$(default)
 build: build-$(default)

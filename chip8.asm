@@ -470,13 +470,12 @@ endmacro
     SetVF 1
     jmp next }
 
-.bumpPC: {
+;;; works even if PC is at odd address
+.bumpPC: jsr incPC
+.incPC:
     inc ProgramCounter
-    inc ProgramCounter
-    bne done
-    inc ProgramCounter+1
-.done:
-    rts }
+    { bne no : inc ProgramCounter+1 : .no }
+    rts
 
 .skipEQ: {
     bne noSkip
