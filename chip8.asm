@@ -71,10 +71,13 @@ org &70
 guard &100
 
 .ProgramCounter skip 2
+
+.startRegisters
 .Index skip 2
 .DelayTimer skip 1
 .SoundTimer skip 1
 .Registers skip 16
+sizeRegisters = *-startRegisters
 
 .MsgPtr skip 2
 
@@ -824,7 +827,22 @@ endmacro
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; execute/next
 
+;;; Some Chip8 examples (such as maze) use register before assigning them, and hence rely
+;;; on the emulator to have initialized them to zero.  Variablle in zero-page require
+;;; explicit initialization, or else have random values at startup on real BBC hardware.
+;;; Emulators (b-em,jsbeeb) initialize all memory to zero, and so mask this bug.
+
+.initializeRegs: {
+    ldx sizeRegisters
+    lda #0
+.loop:
+    dex
+    sta startRegisters,x
+    bne loop
+    rts }
+
 .execute:
+    jsr initializeRegs
     lda #LO(romStart) : sta ProgramCounter
     lda #HI(romStart) : sta ProgramCounter+1
     jmp op00E0 ;; initial clear screen; continues at next
