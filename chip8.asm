@@ -24,6 +24,20 @@ osnewl = &ffe7
 oswrch = &ffee
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; quirks
+
+Off = FALSE
+On = TRUE
+
+;;; Using the terminology from the 5-quirks testrom
+Quirk_VFReset = On
+Quirk_Memory = On
+Quirk_DisplayWait = On
+Quirk_Clipping = On
+Quirk_Shifting = On ;; Off is the proper chip8 behaviour; but invaders needs it On.
+Quirk_Jumping = Off
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; macros
 
 macro copy16iv A,B
@@ -438,7 +452,7 @@ endmacro
     jsr xorPlotXY
 .after:
     inc ScreenX
-    lda ScreenX : cmp #64 : beq done ;; quirk, clipping on
+    if Quirk_Clipping : lda ScreenX : cmp #64 : beq done : endif
     dec StripCount
     bne loop
 .done:
@@ -456,7 +470,7 @@ endmacro
     beq done
     .smc : lda #&EE : sta ScreenX
     inc ScreenY
-    lda ScreenY : cmp #32 : beq done ;; quirk, clipping on
+    if Quirk_Clipping : lda ScreenY : cmp #32 : beq done : endif
     inc smc_y+1
     jmp loop
 .done:
@@ -578,7 +592,7 @@ endmacro
     lda Registers,x
     ora Registers,y
     sta Registers,x
-    SetVF 0 ;; "vf-reset" quirk
+    if Quirk_VFReset : SetVF 0 : endif
     jmp next
 
 .op8XY2:
@@ -586,7 +600,7 @@ endmacro
     lda Registers,x
     and Registers,y
     sta Registers,x
-    SetVF 0 ;; "vf-reset" quirk
+    if Quirk_VFReset : SetVF 0 : endif
     jmp next
 
 .op8XY3:
@@ -594,7 +608,7 @@ endmacro
     lda Registers,x
     eor Registers,y
     sta Registers,x
-    SetVF 0 ;; "vf-reset" quirk
+    if Quirk_VFReset : SetVF 0 : endif
     jmp next
 
 .op8XY4:
@@ -613,7 +627,7 @@ endmacro
 
 .op8XY6:
     ;; 8XY6 (Register Shift Right)
-    ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
+    if Quirk_Shifting = Off : SetXfromY : endif
     lsr Registers,x
     jmp checkCarryNext
 
@@ -626,7 +640,7 @@ endmacro
 
 .op8XYE:
     ;; 8XYE (Register Shift Left)
-    ;;SetXfromY ;; uncomment for "shifting" quirk off. breaks invaders
+    if Quirk_Shifting = Off : SetXfromY : endif
     asl Registers,x
     jmp checkCarryNext
 
@@ -660,7 +674,8 @@ endmacro
 .opB: {
     ;; BNNN (Jump with offset)
     lda OpH : and #&f : ora #&20 : sta ProgramCounter+1
-    lda OpL : clc : adc Registers+0
+    lda OpL : clc
+    if Quirk_Jumping : adc Registers,x : else : adc Registers+0 : endif
     sta ProgramCounter
     bcc done
     inc ProgramCounter+1
@@ -681,7 +696,7 @@ endmacro
     lda Registers,y : sta ScreenY
     lda OpL : and #&f : sta NumLines
     SetVF 0
-    awaitSync ;; display wait quirk
+    if Quirk_DisplayWait : awaitSync : endif
     jsr drawSprite
     jmp next
 
@@ -791,7 +806,7 @@ endmacro
     iny
     jmp loop
 .done:
-    iny : tya : BumpIndex ;; "memory" quirk
+    if Quirk_Memory : iny : tya : BumpIndex : endif
     jmp next }
 
 .opFX65: {
@@ -806,7 +821,7 @@ endmacro
     iny
     jmp loop
 .done:
-    iny : tya : BumpIndex ;; "memory" quirk
+    if Quirk_Memory : iny : tya : BumpIndex : endif
     jmp next }
 
 .opF:

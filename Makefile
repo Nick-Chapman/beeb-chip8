@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = maze
+default = 5-quirks
 
 run: run-$(default)
 build: build-$(default)
