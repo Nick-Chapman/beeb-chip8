@@ -9,6 +9,16 @@ including
 [pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot) and
 [tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot).
 
+Chip8 keypad mapping
+```
+     press             chip8
+    -------           -------
+    1 2 3 4      =>   1 2 3 C
+     q w e r     =>   4 5 6 D
+      a s d f    =>   7 8 9 E
+       z x c v   =>   A 0 B F
+```
+
 Some resources:
 - [Cheat sheet for CHIP-8 instructions](https://johnearnest.github.io/Octo/docs/chip8ref.pdf)
 - [Tobias's emulator guide](https://tobiasvl.github.io/blog/write-a-chip-8-emulator)
