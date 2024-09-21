@@ -1,5 +1,5 @@
 
-Debug = FALSE
+Debug = FALSE ;; Debug is borked. screen positioning goes all wrong
 
 interpreterStart = &1100
 chip8memStart = &2000 ;; 4k
@@ -31,7 +31,7 @@ On = TRUE
 
 ;;; Using the terminology from the 5-quirks testrom
 Quirk_VFReset = On
-Quirk_Memory = On
+Quirk_Memory = On ;; NOTE: my haskell emulator has this set as Off
 Quirk_DisplayWait = On
 Quirk_Clipping = On
 Quirk_Shifting = On ;; Off is the proper chip8 behaviour; but invaders needs it On.
@@ -666,6 +666,7 @@ endmacro
     jmp skipNE
 
 .opA:
+    ;; space : lda OpH : jsr printHexA : lda OpL : jsr printHexA ;; DEBUG
     ;; ANNN (Set Index Register)
     lda OpH : and #&f : ora #&20 : sta Index+1
     lda OpL : sta Index
@@ -762,6 +763,8 @@ endmacro
     ;; FX29 (Font Character)
     lda #HI(fontData) : sta Index+1
     lda Registers,x
+    and #&F ;; in case register is outside range 0-15 ;; KIND
+    ;;pha : and #&F0 : { beq no : space : pla : jsr printHexA : panic "--font" : .no } : pla ;; HARSH
     asl a : asl a : asl a
     sta Index
     jmp next
@@ -978,6 +981,7 @@ equb 0 ;; select chip8 without needing input form the keypad
 assert (romStart = &2200)
 
 incbin ROM
+equb 0
 
 .end:
 

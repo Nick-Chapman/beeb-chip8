@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = 5-quirks
+default = scroll
 
 run: run-$(default)
 build: build-$(default)
@@ -50,3 +50,7 @@ dis-%:
 roms/pi.ch8: ../chip8/app/*.hs
 	(cd ../chip8; stack run -- --pi --assemble)
 	cp ../chip8/pi.ch8 roms
+
+roms/scroll.ch8: ../chip8/app/*.hs message.text Makefile
+	(cd ../chip8; stack run -- --scroll --assemble)
+	cat ../chip8/scroll.ch8 message.text > roms/scroll.ch8
