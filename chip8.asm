@@ -949,6 +949,7 @@ endif
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 print "bytes taken by interpreter: ", *-interpreterStart
+print "bytes available before chip8 memory: ", chip8memStart-*
 
 org chip8memStart
 ;;;original interpreter lived here in 512 bytes -- now fonts live here.

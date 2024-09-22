@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = scroll
+default = bf-fibs
 
 run: run-$(default)
 build: build-$(default)
@@ -47,10 +47,26 @@ has-%:
 dis-%:
 	cat roms/$*.ch8 | (cd ../../code/chip8; stack run /dev/stdin -- --dump)
 
+roms/scroll.ch8: ../chip8/app/*.hs message.text Makefile
+	(cd ../chip8; stack run -- --assemble scroll)
+	cat ../chip8/gen/scroll.ch8 message.text > roms/scroll.ch8
+
 roms/pi.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --pi --assemble)
+	(cd ../chip8; stack run -- --assemble pi)
 	cp ../chip8/pi.ch8 roms
 
-roms/scroll.ch8: ../chip8/app/*.hs message.text Makefile
-	(cd ../chip8; stack run -- --scroll --assemble)
-	cat ../chip8/scroll.ch8 message.text > roms/scroll.ch8
+roms/three.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --assemble three)
+	cp ../chip8/gen/three.ch8 roms
+
+roms/evens.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --assemble evens)
+	cp ../chip8/gen/evens.ch8 roms
+
+roms/bf-reverse.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --assemble bf-reverse)
+	cp ../chip8/gen/bf-reverse.ch8 roms
+
+roms/bf-fibs.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --assemble bf-fibs)
+	cp ../chip8/gen/bf-fibs.ch8 roms
