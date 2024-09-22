@@ -5,7 +5,6 @@
 - [6-keypad](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/6-keypad.ssd&autoboot)
 - [bf-fibs](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-fibs.ssd&autoboot)
 - [bf-reverse](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-reverse.ssd&autoboot)
-- [bf](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf.ssd&autoboot)
 - [brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/brix.ssd&autoboot)
 - [evens](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/evens.ssd&autoboot)
 - [ibm](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/ibm.ssd&autoboot)
