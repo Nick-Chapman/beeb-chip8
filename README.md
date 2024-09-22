@@ -1,6 +1,6 @@
 # beeb-chip8
 
-Implementation of chip8 for the BBC Micro.
+Implementation of Chip8 for the BBC Micro.
 
 Try various roms [online with jsbeeb](https://nick-chapman.github.io/beeb-chip8)
 including
@@ -8,6 +8,9 @@ including
 [invaders](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/invaders.ssd&autoboot),
 [pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot) and
 [tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot).
+
+Also see a [Brainfuck interpreter](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-fibs.ssd&auto) wriiten in Chip8; computing the Fibonacci Sequence.
+
 
 Chip8 keypad mapping
 ```
