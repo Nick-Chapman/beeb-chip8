@@ -2,7 +2,7 @@
 top: run
 all: build-all
 
-default = bf-fibs
+default = bf-collatz
 
 run: run-$(default)
 build: build-$(default)
@@ -70,3 +70,7 @@ roms/bf-reverse.ch8: ../chip8/app/*.hs
 roms/bf-fibs.ch8: ../chip8/app/*.hs
 	(cd ../chip8; stack run -- --assemble bf-fibs)
 	cp ../chip8/gen/bf-fibs.ch8 roms
+
+roms/bf-collatz.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --assemble bf-collatz)
+	cp ../chip8/gen/bf-collatz.ch8 roms

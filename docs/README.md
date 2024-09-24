@@ -3,6 +3,7 @@
 - [4-flags](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/4-flags.ssd&autoboot)
 - [5-quirks](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/5-quirks.ssd&autoboot)
 - [6-keypad](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/6-keypad.ssd&autoboot)
+- [bf-collatz](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-collatz.ssd&autoboot)
 - [bf-fibs](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-fibs.ssd&autoboot)
 - [bf-reverse](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-reverse.ssd&autoboot)
 - [brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/brix.ssd&autoboot)
