@@ -642,7 +642,7 @@ endmacro
     ;; 8XYE (Register Shift Left)
     if Quirk_Shifting = Off : SetXfromY : endif
     asl Registers,x
-    jmp checkCarryNext
+    jmp checkCarryNext ;; online "ajor" emulator acts like it never sets carry here
 
 .dispatchOp8:
     equw op8XY0,op8XY1,op8XY2,op8XY3,op8XY4,op8XY5,op8XY6,op8XY7

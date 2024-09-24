@@ -51,9 +51,13 @@ roms/scroll.ch8: ../chip8/app/*.hs message.text Makefile
 	(cd ../chip8; stack run -- --assemble scroll)
 	cat ../chip8/gen/scroll.ch8 message.text > roms/scroll.ch8
 
+roms/scroll-what.ch8: ../chip8/app/*.hs
+	(cd ../chip8; stack run -- --assemble scroll-what)
+	cp ../chip8/gen/scroll-what.ch8 roms
+
 roms/pi.ch8: ../chip8/app/*.hs
 	(cd ../chip8; stack run -- --assemble pi)
-	cp ../chip8/pi.ch8 roms
+	cp ../chip8/gen/pi.ch8 roms
 
 roms/three.ch8: ../chip8/app/*.hs
 	(cd ../chip8; stack run -- --assemble three)
