@@ -11,6 +11,24 @@ including
 
 Also see my Chip8 [Brainfuck interpreter](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-fibs.ssd&autoboot) computing the Fibonacci Sequence.
 
+# self.ch8
+
+[self.ch8](https://github.com/Nick-Chapman/chip8/tree/master/gen/self.ch8), is a chip8 interpreter, written in chip8.
+Here is its [disassembly](https://github.com/Nick-Chapman/chip8/tree/master/gen/self.asm).
+Here is the [Haskell DSL](https://github.com/Nick-Chapman/chip8/tree/master/app/Self.hs) from which is was constructed.
+To run the interpreter on an object program, simply concatenate the roms:
+```
+cat self.ch8 PONG2.ch8 > self-PONG2.ch88
+```
+To prove the interpreter is really an interpreter (and not simply a trivial relocate and execute cheat)
+it offers a pause function on `z`.  When paused the program counter and current opcode are displayed.
+
+Here are some examples in jsbeeb:
+[self-MAZE](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-MAZE.ssd&autoboot),
+[self-PONG2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-PONG2.ssd&autoboot),
+[self-BRIX](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-BRIX.ssd&autoboot).
+
+
 Chip8 keypad mapping
 ```
      press             chip8
