@@ -16,5 +16,8 @@
 - [pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot)
 - [scroll](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/scroll.ssd&autoboot)
 - [scroll-what](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/scroll-what.ssd&autoboot)
+- [self-BRIX](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-BRIX.ssd&autoboot)
+- [self-MAZE](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-MAZE.ssd&autoboot)
+- [self-PONG2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-PONG2.ssd&autoboot)
 - [tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot)
 - [three](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/three.ssd&autoboot)
