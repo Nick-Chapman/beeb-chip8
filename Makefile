@@ -1,8 +1,8 @@
 
-top: run
+top: all
 all: build-all
 
-default = self-PONG2
+default = self-pong2
 
 run: run-$(default)
 build: build-$(default)
@@ -38,47 +38,3 @@ roms/%.info:
 	echo $* > $@
 
 _build: ; @mkdir -p $@
-
-# run using my haskell interpreter
-has-%:
-	cat roms/$*.ch8 | (cd ../../code/chip8; stack run /dev/stdin)
-
-# dissasemble using my haskell interpreter
-dis-%:
-	cat roms/$*.ch8 | (cd ../../code/chip8; stack run /dev/stdin -- --dump)
-
-roms/scroll.ch8: ../chip8/app/*.hs message.text Makefile
-	(cd ../chip8; stack run -- --assemble scroll)
-	cat ../chip8/gen/scroll.ch8 message.text > roms/scroll.ch8
-
-roms/scroll-what.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble scroll-what)
-	cp ../chip8/gen/scroll-what.ch8 roms
-
-roms/pi.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble pi)
-	cp ../chip8/gen/pi.ch8 roms
-
-roms/three.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble three)
-	cp ../chip8/gen/three.ch8 roms
-
-roms/evens.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble evens)
-	cp ../chip8/gen/evens.ch8 roms
-
-roms/bf-reverse.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble bf-reverse)
-	cp ../chip8/gen/bf-reverse.ch8 roms
-
-roms/bf-fibs.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble bf-fibs)
-	cp ../chip8/gen/bf-fibs.ch8 roms
-
-roms/bf-collatz.ch8: ../chip8/app/*.hs
-	(cd ../chip8; stack run -- --assemble bf-collatz)
-	cp ../chip8/gen/bf-collatz.ch8 roms
-
-.PRECIOUS:roms/%.ch8
-roms/%.ch8: ../chip8/gen/%.ch8
-	cp $^ $@

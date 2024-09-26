@@ -4,9 +4,10 @@ Implementation of Chip8 for the BBC Micro.
 
 Try various roms [online with jsbeeb](https://nick-chapman.github.io/beeb-chip8)
 including
+[maze](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/maze.ssd&autoboot),
+[pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot),
 [brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/brix.ssd&autoboot),
 [invaders](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/invaders.ssd&autoboot),
-[pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/pong2.ssd&autoboot) and
 [tetris](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/tetris.ssd&autoboot).
 
 Also see my Chip8 [Brainfuck interpreter](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/bf-fibs.ssd&autoboot) computing the Fibonacci Sequence.
@@ -24,9 +25,9 @@ To prove the interpreter is really an interpreter (and not simply a trivial relo
 it offers a pause function on `z`.  When paused the program counter and current opcode are displayed.
 
 Here are some examples in jsbeeb:
-[self-MAZE](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-MAZE.ssd&autoboot),
-[self-PONG2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-PONG2.ssd&autoboot),
-[self-BRIX](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-BRIX.ssd&autoboot).
+[self-maze](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-maze.ssd&autoboot),
+[self-pong2](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-pong2.ssd&autoboot),
+[self-brix](https://bbc.godbolt.org/?&disc1=https://nick-chapman.github.io/beeb-chip8/self-brix.ssd&autoboot).
 
 
 Chip8 keypad mapping
