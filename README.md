@@ -13,8 +13,8 @@ Also see my Chip8 [Brainfuck interpreter](https://bbc.godbolt.org/?&disc1=https:
 
 # self.ch8
 
-[self.ch8](https://github.com/Nick-Chapman/chip8/tree/master/gen/self.ch8), is a chip8 interpreter, written in chip8.
-Here is its [disassembly](https://github.com/Nick-Chapman/chip8/tree/master/gen/self.asm).
+[self.ch8](https://github.com/Nick-Chapman/chip8/tree/master/roms/self.ch8), is a chip8 interpreter, written in chip8.
+Here is its [disassembly](https://github.com/Nick-Chapman/chip8/tree/master/dis/self.dis).
 Here is the [Haskell DSL](https://github.com/Nick-Chapman/chip8/tree/master/app/Self.hs) from which is was constructed.
 To run the interpreter on an object program, simply concatenate the roms:
 ```
